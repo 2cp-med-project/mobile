@@ -1,0 +1,1 @@
+//Checks token → redirects 
