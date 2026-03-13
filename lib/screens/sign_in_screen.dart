@@ -81,7 +81,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   Text(
                     'SE CONNECTER',
                     style: TextStyle(
-                      color:         AppColors.primary,
+                      color:         AppColors.primary.withValues(alpha: 0.85),
                       fontSize:      22,
                       fontWeight:    FontWeight.w800,
                       letterSpacing: 1.2,
@@ -132,7 +132,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   const SizedBox(height: 16),
 
                   Text(
-                    'Mot de passe oublié',
+                    'Mot de passe oublié ?',
                     style: TextStyle(
                       color:    AppColors.textGrey,
                       fontSize: 13,
