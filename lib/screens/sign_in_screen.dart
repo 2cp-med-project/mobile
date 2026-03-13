@@ -1,10 +1,12 @@
+// screens/sign_in_screen.dart
+// Login page — only screen logic here, all UI imported from widgets/
 
-import '../config/app_colors.dart';
 import 'package:flutter/material.dart';
-import '../widgets/app_text_field.dart';   // phone + password inputs
-import '../widgets/app_button.dart';       // teal login button
-import '../widgets/healio_logo.dart';      // logo + "Healio" text
-import '../widgets/top_bubbles.dart';      // decorative teal circles background
+import '../widgets/app_text_field.dart';
+import '../widgets/app_button.dart';
+import '../widgets/healio_logo.dart';
+import '../widgets/top_bubbles.dart';
+import '../config/app_colors.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -47,8 +49,8 @@ class _SignInScreenState extends State<SignInScreen> {
 
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(seconds: 1));
-    // TODO: replace line above with → await AuthService.login(phone, password);
-    // TODO: then navigate     with → Navigator.pushReplacementNamed(context, AppRoutes.home);
+    // TODO: await AuthService.login(phone, password);
+    // TODO: Navigator.pushReplacementNamed(context, AppRoutes.home);
     setState(() => _isLoading = false);
   }
 
@@ -59,7 +61,7 @@ class _SignInScreenState extends State<SignInScreen> {
       body: Stack(
         children: [
 
-          // background — imported from widgets/top_bubbles.dart
+          // background shapes — imported from widgets/top_bubbles.dart
           const TopBubbles(),
 
           SafeArea(
@@ -68,31 +70,35 @@ class _SignInScreenState extends State<SignInScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 56),
+                  const SizedBox(height: 60),
 
                   // logo — imported from widgets/healio_logo.dart
                   const HealioLogo(),
+                  const SizedBox(height: 60),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
 
-                  const Text(
+                  Text(
                     'SE CONNECTER',
                     style: TextStyle(
-                      color:        AppColors.primary,
-                      fontSize:     22,
-                      fontWeight:   FontWeight.w800,
+                      color:         AppColors.primary,
+                      fontSize:      22,
+                      fontWeight:    FontWeight.w800,
                       letterSpacing: 1.2,
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 80),
 
-                  const Text(
+                  Text(
                     'Toute votre santé, au même endroit',
-                    style: TextStyle(color: Color(0xFFAAAAAA), fontSize: 13),
+                    style: TextStyle(
+                      color:    AppColors.primary,
+                      fontSize: 13,
+                    ),
                   ),
 
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 28),
 
                   // phone field — imported from widgets/app_text_field.dart
                   AppTextField(
@@ -123,11 +129,14 @@ class _SignInScreenState extends State<SignInScreen> {
                     onPressed: _onLoginPressed,
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  const Text(
+                  Text(
                     'Mot de passe oublié',
-                    style: TextStyle(color: Color(0xFFAAAAAA), fontSize: 13),
+                    style: TextStyle(
+                      color:    AppColors.textGrey,
+                      fontSize: 13,
+                    ),
                   ),
 
                   const SizedBox(height: 4),
@@ -136,7 +145,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     onTap: () {
                       // TODO: Navigator.pushNamed(context, AppRoutes.signUp);
                     },
-                    child: const Text(
+                    child: Text(
                       "S'inscrire",
                       style: TextStyle(
                         color:      AppColors.primary,

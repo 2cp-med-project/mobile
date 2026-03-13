@@ -38,7 +38,7 @@ class AppTextField extends StatelessWidget {
             labelStyle: const TextStyle(color: AppColors.primary, fontSize: 12),
             floatingLabelBehavior: FloatingLabelBehavior.always,
             suffixIcon: hasError
-                ? const Icon(Icons.warning_amber_rounded, color: AppColors.primary , size: 20)
+                ? const Icon(Icons.warning_amber_rounded, color: AppColors.error , size: 20)
                 : null,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             enabledBorder: OutlineInputBorder(
