@@ -7,6 +7,7 @@ import '../widgets/app_button.dart';
 import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import '../config/app_colors.dart';
+import 'sign_up_step2_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -46,8 +47,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
     if (hasError) return;
 
-    // TODO: navigate to next sign up step
-    // Navigator.pushNamed(context, AppRoutes.signUpStep2);
+    Navigator.push(
+  context,
+  MaterialPageRoute(builder: (_) => const SignUpStep2Screen()),
+
+  //next 
+);
   }
 
   @override
@@ -114,21 +119,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     onChanged: (_) => setState(() => _prenomError = null),
                   ),
 
-                  const SizedBox(height: 150),
+                  const SizedBox(height: 130),
 
                   Align(
                     alignment: Alignment.center,
                     child: SizedBox(
                       width: 140,
                       child: AppButton(
-                        label: 'Suivante',
+                        label: 'Suivant',
                         borderRadius: 31, 
                         onPressed: _onSuivantePressed,
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 30),
                 ],
               ),
             ),

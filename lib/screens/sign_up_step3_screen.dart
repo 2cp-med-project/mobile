@@ -1,0 +1,158 @@
+// screens/sign_up_step3_screen.dart
+// Sign up step 3 — adresse, numéro de téléphone, e-mail
+
+import 'package:flutter/material.dart';
+import '../widgets/app_text_field.dart';
+import '../widgets/app_button.dart';
+import '../widgets/healio_logo.dart';
+import '../widgets/signup_bubbles.dart';
+
+class SignUpStep3Screen extends StatefulWidget {
+  const SignUpStep3Screen({super.key});
+
+  @override
+  State<SignUpStep3Screen> createState() => _SignUpStep3ScreenState();
+}
+
+class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
+  final _adresseController   = TextEditingController();
+  final _phoneController     = TextEditingController();
+  final _emailController     = TextEditingController();
+
+  String? _adresseError;
+  String? _phoneError;
+  String? _emailError;
+
+  @override
+  void dispose() {
+    _adresseController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _onSuivantePressed() {
+    setState(() {
+      _adresseError = null;
+      _phoneError   = null;
+      _emailError   = null;
+    });
+
+    bool hasError = false;
+    if (_adresseController.text.trim().isEmpty) {
+      setState(() => _adresseError = 'Requis');
+      hasError = true;
+    }
+    if (_phoneController.text.trim().isEmpty) {
+      setState(() => _phoneError = 'Requis');
+      hasError = true;
+    }
+    if (_emailController.text.trim().isEmpty) {
+      setState(() => _emailError = 'Requis');
+      hasError = true;
+    }
+    if (hasError) return;
+
+    // TODO: navigate to next step
+    // Navigator.pushNamed(context, AppRoutes.signUpStep4);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFEEFBF7),
+      body: Stack(
+        children: [
+
+          // background blobs — same as other sign up screens
+          const SignupBubbles(),
+
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 45),
+
+                  // logo
+                  const HealioLogo(),
+
+                  const SizedBox(height: 60),
+
+                  // title — center aligned
+                  const Text(
+                    'Informations générales',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color:      Colors.black87,
+                      fontSize:   17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // subtitle — center aligned
+                  const Text(
+                    'Veuillez saisir votre adresse, votre numéro\nde téléphone et votre adresse e-mail.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color:    Colors.black54,
+                      fontSize: 12,
+                      height:   1.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 35),
+
+                  // adresse field
+                  AppTextField(
+                    controller: _adresseController,
+                    hint:       'Adresse',
+                    errorText:  _adresseError,
+                    onChanged:  (_) => setState(() => _adresseError = null),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // phone field
+                  AppTextField(
+                    controller:   _phoneController,
+                    hint:         'Numéro de téléphone',
+                    keyboardType: TextInputType.phone,
+                    errorText:    _phoneError,
+                    onChanged:    (_) => setState(() => _phoneError = null),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // email field
+                  AppTextField(
+                    controller:   _emailController,
+                    hint:         'E-mail',
+                    keyboardType: TextInputType.emailAddress,
+                    errorText:    _emailError,
+                    onChanged:    (_) => setState(() => _emailError = null),
+                  ),
+
+                  const SizedBox(height: 130),
+
+                  SizedBox(
+                    width: 140,
+                    child: AppButton(
+                      label:        'Suivant',
+                      borderRadius: 31,
+                      onPressed:    _onSuivantePressed,
+                    ),
+                  ),
+
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
