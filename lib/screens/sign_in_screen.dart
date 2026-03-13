@@ -1,6 +1,5 @@
-// screens/sign_in_screen.dart
-// Login page — only screen logic here, all UI imported from widgets/
 
+// Logic required in the fields (case of mdp<8, phone/email invalid, empty fields...)
 import 'package:flutter/material.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_button.dart';
@@ -64,7 +63,7 @@ class _SignInScreenState extends State<SignInScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // background shapes — imported from widgets/top_bubbles.dart
+          // background shapes 
           const TopBubbles(),
 
           SafeArea(
@@ -75,7 +74,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 children: [
                   const SizedBox(height: 60),
 
-                  // logo — imported from widgets/healio_logo.dart
+                  // logo 
                   const HealioLogo(),
                   const SizedBox(height: 65),
 
@@ -99,7 +98,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 28),
 
-                  // phone field — imported from widgets/app_text_field.dart
+                  // phone field
                   AppTextField(
                     controller: _phoneController,
                     hint: 'Entrez votre numéro de téléphone',
@@ -110,7 +109,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 16),
 
-                  // password field — same component, different props
+                  // password field
                   AppTextField(
                     controller: _passwordController,
                     hint: 'Entrez votre mot de passe',

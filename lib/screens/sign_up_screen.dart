@@ -1,5 +1,4 @@
-// screens/sign_up_screen.dart
-// Sign up page — step 1: Nom + Prénom
+// Logic required in the fields (case of mdp<8, phone/email invalid, empty fields...)
 
 import 'package:flutter/material.dart';
 import '../widgets/app_text_field.dart';
@@ -51,7 +50,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   context,
   MaterialPageRoute(builder: (_) => const SignUpStep2Screen()),
 
-  //next 
 );
   }
 
@@ -61,7 +59,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       backgroundColor: const Color(0xFFEEFBF7),
       body: Stack(
         children: [
-          // background blobs — imported from widgets/signup_bubbles.dart
+          // background
           const SignupBubbles(),
 
           SafeArea(
@@ -72,7 +70,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 children: [
                   const SizedBox(height: 45),
 
-                  // logo — same component as sign in
+                  // logo 
                   const Center(child: HealioLogo()),
 
                   const SizedBox(height: 80),

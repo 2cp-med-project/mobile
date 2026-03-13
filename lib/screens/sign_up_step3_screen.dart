@@ -1,5 +1,4 @@
-// screens/sign_up_step3_screen.dart
-// Sign up step 3 — adresse, numéro de téléphone, e-mail
+// Logic required in the fields (case of mdp<8, phone/email invalid, empty fields...)
 
 import 'package:flutter/material.dart';
 import '../widgets/app_text_field.dart';
@@ -64,7 +63,7 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
       body: Stack(
         children: [
 
-          // background blobs — same as other sign up screens
+          // background blobs
           const SignupBubbles(),
 
           SafeArea(
@@ -80,7 +79,7 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
 
                   const SizedBox(height: 60),
 
-                  // title — center aligned
+                  // title 
                   const Text(
                     'Informations générales',
                     textAlign: TextAlign.center,
@@ -93,7 +92,7 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
 
                   const SizedBox(height: 10),
 
-                  // subtitle — center aligned
+                  // subtitle 
                   const Text(
                     'Veuillez saisir votre adresse, votre numéro\nde téléphone et votre adresse e-mail.',
                     textAlign: TextAlign.center,
@@ -106,7 +105,7 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
 
                   const SizedBox(height: 35),
 
-                  // adresse field
+                  // adress field
                   AppTextField(
                     controller: _adresseController,
                     hint:       'Adresse',

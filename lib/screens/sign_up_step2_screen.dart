@@ -1,3 +1,5 @@
+// Logic required in the fields (case of mdp<8, phone/email invalid, empty fields...)
+
 import 'package:flutter/material.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_button.dart';
@@ -80,7 +82,7 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
       backgroundColor: const Color(0xFFEEFBF7),
       body: Stack(
         children: [
-          // background blobs — same as sign up step 1
+          // background
           const SignupBubbles(),
 
           SafeArea(
@@ -184,7 +186,7 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
 
                   const SizedBox(height: 130),
 
-                  // suivant button — left aligned like Figma
+                  // suivant button
                   Align(
                     alignment: Alignment.center,
                     child: SizedBox(
