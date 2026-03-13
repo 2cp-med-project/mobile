@@ -61,6 +61,7 @@ flutter:
     - assets/images/logo.svg
     - assets/images/loginIcon.svg
     - assets/images/loginIcon2.svg
+    - assets/images/loginIcon3.svg 
 
   # To add assets to your application, add an assets section, like this:
   # assets:
