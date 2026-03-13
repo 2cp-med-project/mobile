@@ -122,7 +122,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 28),
 
-                  // button — imported from widgets/app_button.dart
                   AppButton(
                     label:     'Se connecter',
                     isLoading: _isLoading,

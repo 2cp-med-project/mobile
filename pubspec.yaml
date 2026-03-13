@@ -51,13 +51,16 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
+# The following line ensures that the Material Icons font is
+# included with your application, so that you can use the icons in
+# the material Icons class.
 flutter:
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
+
   assets:
-  - assets/images/logo.svg
+    - assets/images/logo.svg
+    - assets/images/loginIcon.svg
+    - assets/images/loginIcon2.svg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

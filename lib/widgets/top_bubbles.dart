@@ -1,7 +1,5 @@
-// widgets/top_bubbles.dart
-// top shape = 1/4 (logo only), green gap = 1/4 (SE CONNECTER), bottom shape = 2/4 (all content)
-
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../config/app_colors.dart';
 
 class TopBubbles extends StatelessWidget {
@@ -10,49 +8,49 @@ class TopBubbles extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final h = MediaQuery.of(context).size.height;
+    final w = MediaQuery.of(context).size.width;
 
     return Stack(
       children: [
-
-        // full green background — shows in the gap and on sides
         Container(color: AppColors.primaryLight),
 
-        // top white shape — 1/4 of screen, logo sits here
         Positioned(
-          top:   0,
-          left:  0,
-          right: 0,
-          child: Container(
-            height: h * 0.3,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                bottomLeft:  Radius.circular(130),
-                bottomRight: Radius.circular(130),
-              ),
-            ),
+          top: 0,
+          left: 0,
+          child: SvgPicture.asset(
+            'assets/images/loginIcon.svg',
+            width: w * 0.24,
+            height: h * 0.20, //0.24 for bigger 
+            fit: BoxFit.fill,
           ),
         ),
-        
 
-        // bottom white shape — 2/4 of screen, all content sits here
-        // starts at h * 0.50 → leaves exactly 1/4 as green gap
         Positioned(
-          top:    h * 0.45,
-          left:   0,
-          right:  0,
+          top: h * 0.30,
+          right: -50,
+          child: SvgPicture.asset(
+            'assets/images/loginIcon2.svg',
+            width: w * 0.35,
+            height: h * 0.25,
+            fit: BoxFit.fill,
+          ),
+        ),
+
+        Positioned(
+          top: h * 0.45,
+          left: 0,
+          right: 0,
           bottom: 0,
           child: Container(
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.only(
-                topLeft:  Radius.circular(130),
+                topLeft: Radius.circular(130),
                 topRight: Radius.circular(130),
               ),
             ),
           ),
         ),
-
       ],
     );
   }

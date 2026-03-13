@@ -1,6 +1,3 @@
-// widgets/healio_logo.dart
-// Healio logo + app name — used on sign_in, sign_up, splash
-
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../config/app_colors.dart';
@@ -12,7 +9,6 @@ class HealioLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // logo from assets/images/logo.svg
         SvgPicture.asset('assets/images/logo.svg', height: 78, width: 56),
         const SizedBox(height: 8),
         Text(
