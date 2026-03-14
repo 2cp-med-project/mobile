@@ -47,10 +47,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (hasError) return;
 
     Navigator.push(
-  context,
-  MaterialPageRoute(builder: (_) => const SignUpStep2Screen()),
-
-);
+      context,
+      MaterialPageRoute(builder: (_) => const SignUpStep2Screen()),
+    );
   }
 
   @override
@@ -70,7 +69,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 children: [
                   const SizedBox(height: 45),
 
-                  // logo 
+                  // logo
                   const Center(child: HealioLogo()),
 
                   const SizedBox(height: 80),
@@ -125,12 +124,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       width: 140,
                       child: AppButton(
                         label: 'Suivant',
-                        borderRadius: 31, 
+                        borderRadius: 31,
                         onPressed: _onSuivantePressed,
                       ),
                     ),
                   ),
-
                 ],
               ),
             ),

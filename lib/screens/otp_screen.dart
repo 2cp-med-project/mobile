@@ -7,6 +7,7 @@ import '../widgets/app_button.dart';
 import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import '../config/app_colors.dart';
+import 'formule_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   const OtpScreen({super.key});
@@ -20,10 +21,11 @@ class _OtpScreenState extends State<OtpScreen> {
   bool _isEmail = true;
 
   // 4 controllers + focus nodes for each OTP box
-  final List<TextEditingController> _controllers =
-      List.generate(4, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes =
-      List.generate(4, (_) => FocusNode());
+  final List<TextEditingController> _controllers = List.generate(
+    4,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
 
   String? _otpError;
   bool _isLoading = false;
@@ -67,7 +69,10 @@ class _OtpScreenState extends State<OtpScreen> {
       return;
     }
     // TODO: await AuthService.verifyOtp(code: code);
-    // TODO: Navigator.pushReplacementNamed(context, AppRoutes.home);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const FormuleScreen()),
+    );
   }
 
   @override
@@ -76,7 +81,6 @@ class _OtpScreenState extends State<OtpScreen> {
       backgroundColor: const Color(0xFFEEFBF7),
       body: Stack(
         children: [
-
           const SignupBubbles(),
 
           SafeArea(
@@ -96,8 +100,8 @@ class _OtpScreenState extends State<OtpScreen> {
                     'Pour vérification',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color:      AppColors.primary,
-                      fontSize:   18,
+                      color: AppColors.primary,
+                      fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -111,9 +115,9 @@ class _OtpScreenState extends State<OtpScreen> {
                         : 'Saisissez le code que vous avez reçu\ndans le champ Numéro de téléphone',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color:    Colors.black54,
+                      color: Colors.black54,
                       fontSize: 12,
-                      height:   1.5,
+                      height: 1.5,
                     ),
                   ),
 
@@ -156,8 +160,8 @@ class _OtpScreenState extends State<OtpScreen> {
                           : 'Utilisez e-mail pour recevoir le code',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color:      AppColors.primary,
-                        fontSize:   12,
+                        color: AppColors.primary,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -169,13 +173,12 @@ class _OtpScreenState extends State<OtpScreen> {
                   SizedBox(
                     width: 140,
                     child: AppButton(
-                      label:        'Suivant',
-                      isLoading:    _isLoading,
+                      label: 'Suivant',
+                      isLoading: _isLoading,
                       borderRadius: 31,
-                      onPressed:    _onSuivantePressed,
+                      onPressed: _onSuivantePressed,
                     ),
                   ),
-
                 ],
               ),
             ),
@@ -188,24 +191,24 @@ class _OtpScreenState extends State<OtpScreen> {
   // single OTP digit box
   Widget _buildOtpBox(int index) {
     return Container(
-      width:  52,
+      width: 52,
       height: 52,
       margin: const EdgeInsets.symmetric(horizontal: 6),
       child: TextField(
-        controller:  _controllers[index],
-        focusNode:   _focusNodes[index],
-        onChanged:   (v) => _onDigitChanged(v, index),
+        controller: _controllers[index],
+        focusNode: _focusNodes[index],
+        onChanged: (v) => _onDigitChanged(v, index),
         keyboardType: TextInputType.number,
-        textAlign:    TextAlign.center,
-        maxLength:    1,
+        textAlign: TextAlign.center,
+        maxLength: 1,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         style: TextStyle(
-          fontSize:   18,
+          fontSize: 18,
           fontWeight: FontWeight.w700,
-          color:      AppColors.primary,
+          color: AppColors.primary,
         ),
         decoration: InputDecoration(
-          counterText: '',   // hides the "0/1" counter
+          counterText: '', // hides the "0/1" counter
           contentPadding: EdgeInsets.zero,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),

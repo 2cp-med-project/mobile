@@ -6,6 +6,7 @@ import '../widgets/app_button.dart';
 import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import '../config/app_colors.dart';
+import 'formule_screen.dart';
 
 class SignUpStep6Screen extends StatefulWidget {
   // pass true for email verification, false for phone verification
@@ -18,15 +19,18 @@ class SignUpStep6Screen extends StatefulWidget {
 
 class _SignUpStep6ScreenState extends State<SignUpStep6Screen> {
   // 4 controllers for the 4 OTP boxes
-  final List<TextEditingController> _controllers = List.generate(4, (_) => TextEditingController());
-  final List<FocusNode>             _focusNodes  = List.generate(4, (_) => FocusNode());
+  final List<TextEditingController> _controllers = List.generate(
+    4,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
 
   String? _otpError;
 
   @override
   void dispose() {
     for (final c in _controllers) c.dispose();
-    for (final f in _focusNodes)  f.dispose();
+    for (final f in _focusNodes) f.dispose();
     super.dispose();
   }
 
@@ -50,7 +54,10 @@ class _SignUpStep6ScreenState extends State<SignUpStep6Screen> {
     }
     // TODO: verify OTP with backend
     // await AuthService.verifyOTP(code: _fullCode);
-    // Navigator.pushReplacementNamed(context, AppRoutes.home);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const FormuleScreen()),
+    );
   }
 
   void _onResend() {
@@ -63,7 +70,6 @@ class _SignUpStep6ScreenState extends State<SignUpStep6Screen> {
       backgroundColor: const Color(0xFFEEFBF7),
       body: Stack(
         children: [
-
           const SignupBubbles(),
 
           SafeArea(
@@ -83,8 +89,8 @@ class _SignUpStep6ScreenState extends State<SignUpStep6Screen> {
                     'Pour vérification',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color:      AppColors.primary,
-                      fontSize:   18,
+                      color: AppColors.primary,
+                      fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -98,9 +104,9 @@ class _SignUpStep6ScreenState extends State<SignUpStep6Screen> {
                         : 'Saisissez le code que vous avez reçu\ndans le champ Numéro de téléphone',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color:    Colors.black54,
+                      color: Colors.black54,
                       fontSize: 12,
-                      height:   1.5,
+                      height: 1.5,
                     ),
                   ),
 
@@ -111,27 +117,29 @@ class _SignUpStep6ScreenState extends State<SignUpStep6Screen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(4, (i) {
                       return Container(
-                        width:  56,
+                        width: 56,
                         height: 52,
                         margin: const EdgeInsets.symmetric(horizontal: 6),
                         child: TextField(
-                          controller:   _controllers[i],
-                          focusNode:    _focusNodes[i],
-                          onChanged:    (v) => _onChanged(v, i),
+                          controller: _controllers[i],
+                          focusNode: _focusNodes[i],
+                          onChanged: (v) => _onChanged(v, i),
                           keyboardType: TextInputType.number,
-                          maxLength:    1,
-                          textAlign:    TextAlign.center,
+                          maxLength: 1,
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize:   18,
+                            fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color:      AppColors.primary,
+                            color: AppColors.primary,
                           ),
                           decoration: InputDecoration(
-                            counterText: '',   
+                            counterText: '',
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide(
-                                color: _otpError != null ? AppColors.error : AppColors.border,
+                                color: _otpError != null
+                                    ? AppColors.error
+                                    : AppColors.border,
                                 width: 1.2,
                               ),
                             ),
@@ -172,25 +180,21 @@ class _SignUpStep6ScreenState extends State<SignUpStep6Screen> {
                           ? 'Utilisez votre numéro de téléphone\npour recevoir le code'
                           : 'Utilisez e-mail pour recevoir le code',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color:    AppColors.primary,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: AppColors.primary, fontSize: 12),
                     ),
                   ),
 
                   const SizedBox(height: 150),
 
-                  // suivant button 
+                  // suivant button
                   SizedBox(
                     width: 140,
                     child: AppButton(
-                      label:        'Suivant',
+                      label: 'Suivant',
                       borderRadius: 31,
-                      onPressed:    _onSuivantePressed,
+                      onPressed: _onSuivantePressed,
                     ),
                   ),
-
                 ],
               ),
             ),
