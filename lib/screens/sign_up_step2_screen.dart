@@ -8,6 +8,7 @@ import '../widgets/signup_bubbles.dart';
 import '../config/app_colors.dart';
 import 'sign_up_step3_screen.dart';
 
+
 class SignUpStep2Screen extends StatefulWidget {
   const SignUpStep2Screen({super.key});
 

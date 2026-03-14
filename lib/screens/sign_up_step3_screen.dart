@@ -5,6 +5,7 @@ import '../widgets/app_text_field.dart';
 import '../widgets/app_button.dart';
 import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
+import 'sign_up_step4_screen.dart';
 
 class SignUpStep3Screen extends StatefulWidget {
   const SignUpStep3Screen({super.key});
@@ -14,9 +15,9 @@ class SignUpStep3Screen extends StatefulWidget {
 }
 
 class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
-  final _adresseController   = TextEditingController();
-  final _phoneController     = TextEditingController();
-  final _emailController     = TextEditingController();
+  final _adresseController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
 
   String? _adresseError;
   String? _phoneError;
@@ -33,8 +34,8 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
   void _onSuivantePressed() {
     setState(() {
       _adresseError = null;
-      _phoneError   = null;
-      _emailError   = null;
+      _phoneError = null;
+      _emailError = null;
     });
 
     bool hasError = false;
@@ -52,8 +53,10 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
     }
     if (hasError) return;
 
-    // TODO: navigate to next step
-    // Navigator.pushNamed(context, AppRoutes.signUpStep4);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SignUpStep4Screen()),
+    );
   }
 
   @override
@@ -62,7 +65,6 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
       backgroundColor: const Color(0xFFEEFBF7),
       body: Stack(
         children: [
-
           // background blobs
           const SignupBubbles(),
 
@@ -79,27 +81,27 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
 
                   const SizedBox(height: 60),
 
-                  // title 
+                  // title
                   const Text(
                     'Informations générales',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color:      Colors.black87,
-                      fontSize:   17,
+                      color: Colors.black87,
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
 
                   const SizedBox(height: 10),
 
-                  // subtitle 
+                  // subtitle
                   const Text(
                     'Veuillez saisir votre adresse, votre numéro\nde téléphone et votre adresse e-mail.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color:    Colors.black54,
+                      color: Colors.black54,
                       fontSize: 12,
-                      height:   1.5,
+                      height: 1.5,
                     ),
                   ),
 
@@ -108,31 +110,31 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
                   // adress field
                   AppTextField(
                     controller: _adresseController,
-                    hint:       'Adresse',
-                    errorText:  _adresseError,
-                    onChanged:  (_) => setState(() => _adresseError = null),
+                    hint: 'Adresse',
+                    errorText: _adresseError,
+                    onChanged: (_) => setState(() => _adresseError = null),
                   ),
 
                   const SizedBox(height: 16),
 
                   // phone field
                   AppTextField(
-                    controller:   _phoneController,
-                    hint:         'Numéro de téléphone',
+                    controller: _phoneController,
+                    hint: 'Numéro de téléphone',
                     keyboardType: TextInputType.phone,
-                    errorText:    _phoneError,
-                    onChanged:    (_) => setState(() => _phoneError = null),
+                    errorText: _phoneError,
+                    onChanged: (_) => setState(() => _phoneError = null),
                   ),
 
                   const SizedBox(height: 16),
 
                   // email field
                   AppTextField(
-                    controller:   _emailController,
-                    hint:         'E-mail',
+                    controller: _emailController,
+                    hint: 'E-mail',
                     keyboardType: TextInputType.emailAddress,
-                    errorText:    _emailError,
-                    onChanged:    (_) => setState(() => _emailError = null),
+                    errorText: _emailError,
+                    onChanged: (_) => setState(() => _emailError = null),
                   ),
 
                   const SizedBox(height: 130),
@@ -140,12 +142,11 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
                   SizedBox(
                     width: 140,
                     child: AppButton(
-                      label:        'Suivant',
+                      label: 'Suivant',
                       borderRadius: 31,
-                      onPressed:    _onSuivantePressed,
+                      onPressed: _onSuivantePressed,
                     ),
                   ),
-
                 ],
               ),
             ),
