@@ -7,7 +7,7 @@ import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import '../config/app_colors.dart';
 import 'sign_up_step3_screen.dart';
-
+import '../config/validators.dart';
 
 class SignUpStep2Screen extends StatefulWidget {
   const SignUpStep2Screen({super.key});
@@ -48,33 +48,16 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
       _sexeError = null;
     });
 
-    bool hasError = false;
-    if (_jourController.text.trim().isEmpty) {
-      setState(() => _jourError = 'Requis');
-      hasError = true;
-    }
-    if (_moisController.text.trim().isEmpty) {
-      setState(() => _moisError = 'Requis');
-      hasError = true;
-    }
-    if (_anneeController.text.trim().isEmpty) {
-      setState(() => _anneeError = 'Requis');
-      hasError = true;
-    }
-    if (_lieuController.text.trim().isEmpty) {
-      setState(() => _lieuError = 'Requis');
-      hasError = true;
-    }
-    if (_sexeController.text.trim().isEmpty) {
-      setState(() => _sexeError = 'Requis');
-      hasError = true;
-    }
-    if (hasError) return;
+    setState(() => _jourError = Validators.day(_jourController.text));
+    setState(() => _moisError = Validators.month(_moisController.text));
+    setState(() => _anneeError = Validators.year(_anneeController.text));
+    setState(() => _lieuError = Validators.required(_lieuController.text));
+    setState(() => _sexeError = Validators.required(_sexeController.text));
 
     Navigator.push(
-  context,
-  MaterialPageRoute(builder: (_) => const SignUpStep3Screen()),
-);
+      context,
+      MaterialPageRoute(builder: (_) => const SignUpStep3Screen()),
+    );
   }
 
   @override
@@ -199,7 +182,6 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                       ),
                     ),
                   ),
-
                 ],
               ),
             ),

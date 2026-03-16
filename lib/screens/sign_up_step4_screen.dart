@@ -8,6 +8,7 @@ import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import '../config/app_colors.dart';
 import 'sign_up_step5_screen.dart';
+import '../config/validators.dart';
 
 class SignUpStep4Screen extends StatefulWidget {
   const SignUpStep4Screen({super.key});
@@ -35,7 +36,7 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
 
   // add a new emergency contact field (max 5)
   void _addEmergencyField() {
-    if (_emergencyControllers.length >= 5) return;
+    if (_emergencyControllers.length >= 4) return;
     setState(() {
       _emergencyControllers.add(TextEditingController());
       _emergencyErrors.add(null);
@@ -51,17 +52,17 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
     });
 
     bool hasError = false;
-    if (_idController.text.trim().isEmpty) {
-      setState(() => _idError = 'Requis');
-      hasError = true;
-    }
+    setState(() => _idError = Validators.required(_idController.text));
+    if (_idError != null) hasError = true;
+
     for (int i = 0; i < _emergencyControllers.length; i++) {
-      if (_emergencyControllers[i].text.trim().isEmpty) {
+      if (_emergencyControllers[i].text.trim().isEmpty) { 
         setState(() => _emergencyErrors[i] = 'Requis');
         hasError = true;
       }
     }
     if (hasError) return;
+    
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const SignUpStep5Screen()),

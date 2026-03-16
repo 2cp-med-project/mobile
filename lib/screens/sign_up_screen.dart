@@ -7,6 +7,8 @@ import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import '../config/app_colors.dart';
 import 'sign_up_step2_screen.dart';
+import '../config/validators.dart';
+import '../config/storage_helper.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -29,22 +31,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void _onSuivantePressed() {
+  void _onSuivantePressed() async {
     setState(() {
       _nomError = null;
       _prenomError = null;
     });
 
-    bool hasError = false;
-    if (_nomController.text.trim().isEmpty) {
-      setState(() => _nomError = 'Entrez votre nom');
-      hasError = true;
-    }
-    if (_prenomController.text.trim().isEmpty) {
-      setState(() => _prenomError = 'Entrez votre prénom');
-      hasError = true;
-    }
-    if (hasError) return;
+    setState(() => _nomError = Validators.name(_nomController.text));
+    setState(() => _prenomError = Validators.name(_prenomController.text));
+    if (_nomError != null || _prenomError != null) return;
+
+    await StorageHelper.saveUser(
+      nom: _nomController.text.trim(),
+      prenom: _prenomController.text.trim(),
+      phone: '',
+      email: '',
+    );
 
     Navigator.push(
       context,

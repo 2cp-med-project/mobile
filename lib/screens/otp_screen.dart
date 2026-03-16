@@ -169,7 +169,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
                   const SizedBox(height: 150),
 
-                  // suivante button
+                  // suivant button
                   SizedBox(
                     width: 140,
                     child: AppButton(

@@ -1,15 +1,35 @@
 // screens/welcome_screen.dart
 // Shown after medical form is submitted — account created successfully
+// loads nom from local storage (StorageHelper)
 
 import 'package:flutter/material.dart';
 import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import '../widgets/app_button.dart';
 import '../config/app_colors.dart';
+import '../config/storage_helper.dart';
 
-class WelcomeScreen extends StatelessWidget {
-  final String firstName;
-  const WelcomeScreen({super.key, required this.firstName});
+class WelcomeScreen extends StatefulWidget {
+  const WelcomeScreen({super.key});
+
+  @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen> {
+  String _nom = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNom();
+  }
+
+  // loads nom from local storage
+  Future<void> _loadNom() async {
+    final nom = await StorageHelper.getNom();
+    setState(() => _nom = nom ?? '');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +96,7 @@ class WelcomeScreen extends StatelessWidget {
 
                         const SizedBox(height: 10),
 
-                        // welcome title
+                        // welcome title — uses _nom from local storage
                         RichText(
                           text: TextSpan(
                             style: const TextStyle(
@@ -90,7 +110,7 @@ class WelcomeScreen extends StatelessWidget {
                                 style: TextStyle(color: Colors.black87),
                               ),
                               TextSpan(
-                                text:  '$firstName...',
+                                text:  '$_nom...',
                                 style: TextStyle(color: AppColors.primary),
                               ),
                             ],
@@ -135,7 +155,7 @@ class WelcomeScreen extends StatelessWidget {
 
                   const SizedBox(height: 30),
 
-                  // accéder button 
+                  // accéder button
                   AppButton(
                     label:        'Accéder à l\'application >',
                     borderRadius: 14,
@@ -144,6 +164,7 @@ class WelcomeScreen extends StatelessWidget {
                     },
                   ),
 
+                  const SizedBox(height: 40),
                 ],
               ),
             ),

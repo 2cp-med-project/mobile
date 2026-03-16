@@ -1,7 +1,8 @@
 // main.dart
 
 import 'package:flutter/material.dart';
-import 'screens/sign_in_screen.dart';    // ← import your screen
+import 'screens/sign_in_screen.dart';  
+import 'screens/splash_screen.dart';  // ← import your screen
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +16,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,  // removes the red "debug" banner
       title: 'Healio',
-      home: const SignInScreen(),         // ← show this screen first
+      home: const SplashScreen(),         // ← show this screen first
     );
   }
 }

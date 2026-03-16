@@ -1,4 +1,3 @@
-
 // Logic required in the fields (case of mdp<8, phone/email invalid, empty fields...)
 import 'package:flutter/material.dart';
 import '../widgets/app_text_field.dart';
@@ -7,6 +6,8 @@ import '../widgets/healio_logo.dart';
 import '../widgets/top_bubbles.dart';
 import '../config/app_colors.dart';
 import 'sign_up_screen.dart';
+import '../config/validators.dart';
+import 'forgot_password_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -39,16 +40,11 @@ class _SignInScreenState extends State<SignInScreen> {
     final phone = _phoneController.text.trim();
     final password = _passwordController.text;
 
-    bool hasError = false;
-    if (phone.isEmpty || phone.length < 9) {
-      setState(() => _phoneError = 'Essayez à nouveau');
-      hasError = true;
-    }
-    if (password.isEmpty || password.length < 6) {
-      setState(() => _passwordError = 'Invalid password');
-      hasError = true;
-    }
-    if (hasError) return;
+    setState(() {
+      _phoneError = Validators.phone(_phoneController.text);
+      _passwordError = Validators.password(_passwordController.text);
+    });
+    if (_phoneError != null || _passwordError != null) return;
 
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(seconds: 1));
@@ -63,7 +59,7 @@ class _SignInScreenState extends State<SignInScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // background shapes 
+          // background shapes
           const TopBubbles(),
 
           SafeArea(
@@ -74,10 +70,9 @@ class _SignInScreenState extends State<SignInScreen> {
                 children: [
                   const SizedBox(height: 60),
 
-                  // logo 
+                  // logo
                   const HealioLogo(),
                   const SizedBox(height: 65),
-
 
                   Text(
                     'SE CONNECTER',
@@ -128,10 +123,18 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 16),
 
-                  Text(
-                    'Mot de passe oublié ?',
-                    style: TextStyle(color: AppColors.textGrey, fontSize: 13),
-                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ForgotPasswordScreen(),
+                      ),
+                    ),
+                    child: const Text(
+                      'Mot de passe oublié ?',
+                      style: TextStyle(color: Color(0xFFAAAAAA), fontSize: 13),
+                    ),
+                  ),  
 
                   const SizedBox(height: 4),
 

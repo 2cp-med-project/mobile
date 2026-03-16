@@ -6,6 +6,7 @@ import '../widgets/app_button.dart';
 import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import 'sign_up_step4_screen.dart';
+import '../config/validators.dart';
 
 class SignUpStep3Screen extends StatefulWidget {
   const SignUpStep3Screen({super.key});
@@ -38,21 +39,16 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
       _emailError = null;
     });
 
-    bool hasError = false;
-    if (_adresseController.text.trim().isEmpty) {
-      setState(() => _adresseError = 'Requis');
-      hasError = true;
-    }
-    if (_phoneController.text.trim().isEmpty) {
-      setState(() => _phoneError = 'Requis');
-      hasError = true;
-    }
-    if (_emailController.text.trim().isEmpty) {
-      setState(() => _emailError = 'Requis');
-      hasError = true;
-    }
-    if (hasError) return;
+    setState(
+      () => _adresseError = Validators.required(_adresseController.text),
+    );
+    setState(() => _phoneError = Validators.phone(_phoneController.text));
+    setState(() => _emailError = Validators.email(_emailController.text));
 
+      if (_adresseError != null || _phoneError != null || _emailError != null) {
+        return;
+      }
+      
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const SignUpStep4Screen()),

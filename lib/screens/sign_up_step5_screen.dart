@@ -8,6 +8,7 @@ import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import 'sign_up_step6_screen.dart';
 import 'otp_screen.dart';
+import '../config/validators.dart';
 
 class SignUpStep5Screen extends StatefulWidget {
   const SignUpStep5Screen({super.key});
@@ -18,7 +19,7 @@ class SignUpStep5Screen extends StatefulWidget {
 
 class _SignUpStep5ScreenState extends State<SignUpStep5Screen> {
   final _passwordController = TextEditingController();
-  final _confirmController  = TextEditingController();
+  final _confirmController = TextEditingController();
 
   String? _passwordError;
   String? _confirmError;
@@ -31,36 +32,31 @@ class _SignUpStep5ScreenState extends State<SignUpStep5Screen> {
   }
 
   void _onSuivantePressed() {
-    setState(() { _passwordError = null; _confirmError = null; });
+    setState(() {
+      _passwordError = null;
+      _confirmError = null;
+    });
 
-    bool hasError = false;
+    setState(
+      () => _passwordError = Validators.password(_passwordController.text),
+    );
+    setState(
+      () => _confirmError = Validators.confirmPassword(
+        _confirmController.text,
+        _passwordController.text,
+      ),
+    );
 
-    if (_passwordController.text.isEmpty || _passwordController.text.length < 8) {
-      setState(() => _passwordError = 'Minimum 8 caractères');
-      hasError = true;
-    }
-    if (_confirmController.text.isEmpty) {
-      setState(() => _confirmError = 'Requis');
-      hasError = true;
-    } else if (_confirmController.text != _passwordController.text) {
-      setState(() => _confirmError = 'Les mots de passe ne correspondent pas');
-      hasError = true;
-    }
-    if (hasError) return;
+      if (_passwordError != null || _confirmError != null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SignUpStep6Screen(isEmail: true)),
+    );
 
     Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (_) => const SignUpStep6Screen(isEmail: true),
-  ),
-
-);
-
-Navigator.push(
-  context,
-  MaterialPageRoute(builder: (_) => const OtpScreen()),
-);
-
+      context,
+      MaterialPageRoute(builder: (_) => const OtpScreen()),
+    );
   }
 
   @override
@@ -69,7 +65,6 @@ Navigator.push(
       backgroundColor: const Color(0xFFEEFBF7),
       body: Stack(
         children: [
-
           const SignupBubbles(),
 
           SafeArea(
@@ -89,8 +84,8 @@ Navigator.push(
                     'Pour la sécurité',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color:      Colors.black87,
-                      fontSize:   17,
+                      color: Colors.black87,
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -102,9 +97,9 @@ Navigator.push(
                     'créez un mot de passe robuste',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color:    Colors.black54,
+                      color: Colors.black54,
                       fontSize: 12,
-                      height:   1.5,
+                      height: 1.5,
                     ),
                   ),
 
@@ -112,22 +107,22 @@ Navigator.push(
 
                   // password field
                   AppTextField(
-                    controller:  _passwordController,
-                    hint:        'Créer un mot de passe',
+                    controller: _passwordController,
+                    hint: 'Créer un mot de passe',
                     obscureText: true,
-                    errorText:   _passwordError,
-                    onChanged:   (_) => setState(() => _passwordError = null),
+                    errorText: _passwordError,
+                    onChanged: (_) => setState(() => _passwordError = null),
                   ),
 
                   const SizedBox(height: 16),
 
                   // confirm password field
                   AppTextField(
-                    controller:  _confirmController,
-                    hint:        'Confirmer',
+                    controller: _confirmController,
+                    hint: 'Confirmer',
                     obscureText: true,
-                    errorText:   _confirmError,
-                    onChanged:   (_) => setState(() => _confirmError = null),
+                    errorText: _confirmError,
+                    onChanged: (_) => setState(() => _confirmError = null),
                   ),
 
                   const SizedBox(height: 160),
@@ -136,12 +131,11 @@ Navigator.push(
                   SizedBox(
                     width: 140,
                     child: AppButton(
-                      label:        'Suivant',
+                      label: 'Suivant',
                       borderRadius: 31,
-                      onPressed:    _onSuivantePressed,
+                      onPressed: _onSuivantePressed,
                     ),
                   ),
-
                 ],
               ),
             ),

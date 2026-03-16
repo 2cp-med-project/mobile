@@ -1,7 +1,7 @@
 // widgets/app_text_field.dart
 // Reusable input field — matches Figma exactly:
 // normal: grey label inside field
-// focused: label floats on top border
+// focused: label floats on top border in primary color
 // error: red border + red label + warning icon + error text below
 
 import 'package:flutter/material.dart';
@@ -40,12 +40,17 @@ class AppTextField extends StatelessWidget {
           style: const TextStyle(fontSize: 14, color: AppColors.textDark),
           decoration: InputDecoration(
 
-            // label acts as hint when not focused (grey inside)
-            // floats to top border when focused
+            // label sits inside as hint when not focused (grey)
+            // floats to top border when focused (primary green)
             labelText: hint,
             labelStyle: TextStyle(
               color:    hasError ? AppColors.error : AppColors.textGrey,
               fontSize: 13,
+            ),
+            // label turns primary green when floating (focused)
+            floatingLabelStyle: TextStyle(
+              color:    hasError ? AppColors.error : AppColors.primary,
+              fontSize: 12,
             ),
             floatingLabelBehavior: FloatingLabelBehavior.auto,
 
