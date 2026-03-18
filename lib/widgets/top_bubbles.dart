@@ -20,7 +20,7 @@ class TopBubbles extends StatelessWidget {
           child: SvgPicture.asset(
             'assets/images/loginIcon.svg',
             width: w * 0.24,
-            height: h * 0.20, //0.24 for bigger
+            height: h * 0.20, 
             fit: BoxFit.fill,
           ),
         ),

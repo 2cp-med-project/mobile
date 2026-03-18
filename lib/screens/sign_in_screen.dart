@@ -1,4 +1,3 @@
-// Logic required in the fields (case of mdp<8, phone/email invalid, empty fields...)
 import 'package:flutter/material.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_button.dart';
@@ -8,6 +7,7 @@ import '../config/app_colors.dart';
 import 'sign_up_screen.dart';
 import '../config/validators.dart';
 import 'forgot_password_screen.dart';
+import 'main_screen.dart'; // ← import dashboard
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -37,9 +37,6 @@ class _SignInScreenState extends State<SignInScreen> {
       _passwordError = null;
     });
 
-    final phone = _phoneController.text.trim();
-    final password = _passwordController.text;
-
     setState(() {
       _phoneError = Validators.phone(_phoneController.text);
       _passwordError = Validators.password(_passwordController.text);
@@ -47,10 +44,16 @@ class _SignInScreenState extends State<SignInScreen> {
     if (_phoneError != null || _passwordError != null) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
-    // TODO: await AuthService.login(phone, password);
-    // TODO: Navigator.pushReplacementNamed(context, AppRoutes.home);
+    await Future.delayed(const Duration(milliseconds: 800));
     setState(() => _isLoading = false);
+
+    if (!mounted) return;
+
+    // ── Go directly to dashboard (no token check for testing) ──────────────
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const MainScreen()),
+    );
   }
 
   @override
@@ -59,7 +62,6 @@ class _SignInScreenState extends State<SignInScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // background shapes
           const TopBubbles(),
 
           SafeArea(
@@ -70,7 +72,6 @@ class _SignInScreenState extends State<SignInScreen> {
                 children: [
                   const SizedBox(height: 60),
 
-                  // logo
                   const HealioLogo(),
                   const SizedBox(height: 65),
 
@@ -93,7 +94,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 28),
 
-                  // phone field
                   AppTextField(
                     controller: _phoneController,
                     hint: 'Entrez votre numéro de téléphone',
@@ -104,7 +104,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 16),
 
-                  // password field
                   AppTextField(
                     controller: _passwordController,
                     hint: 'Entrez votre mot de passe',
@@ -134,18 +133,15 @@ class _SignInScreenState extends State<SignInScreen> {
                       'Mot de passe oublié ?',
                       style: TextStyle(color: Color(0xFFAAAAAA), fontSize: 13),
                     ),
-                  ),  
+                  ),
 
                   const SizedBox(height: 4),
 
                   GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SignUpScreen()),
-                      );
-                    },
-
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SignUpScreen()),
+                    ),
                     child: Text(
                       "S'inscrire",
                       style: TextStyle(

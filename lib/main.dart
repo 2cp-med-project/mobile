@@ -1,8 +1,7 @@
 // main.dart
 
 import 'package:flutter/material.dart';
-import 'screens/sign_in_screen.dart';  
-import 'screens/splash_screen.dart';  // ← import your screen
+import 'config/app_routes.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,9 +13,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,  // removes the red "debug" banner
+      debugShowCheckedModeBanner: false,
       title: 'Healio',
-      home: const SplashScreen(),         // ← show this screen first
+      initialRoute: AppRoutes.splash,
+      routes: AppRoutes.routes,
     );
   }
 }

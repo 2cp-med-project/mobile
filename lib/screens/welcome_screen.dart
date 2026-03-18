@@ -8,6 +8,7 @@ import '../widgets/signup_bubbles.dart';
 import '../widgets/app_button.dart';
 import '../config/app_colors.dart';
 import '../config/storage_helper.dart';
+import 'main_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -160,7 +161,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     label:        'Accéder à l\'application >',
                     borderRadius: 14,
                     onPressed: () {
-                      // TODO: Navigator.pushReplacementNamed(context, AppRoutes.home);
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MainScreen()),
+                        (route) => false,
+                      );
                     },
                   ),
 
