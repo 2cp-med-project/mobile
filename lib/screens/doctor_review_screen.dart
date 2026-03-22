@@ -51,18 +51,36 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
   void _submit() {
     if (_globalRating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez attribuer une note globale'),
+        SnackBar(
+          content: const Text('Veuillez attribuer une note globale'),
           backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
     }
     setState(() => _submitted = true);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Évaluation soumise avec succès !'),
-        backgroundColor: AppColors.primary,
+      SnackBar(
+        content: const Text(
+          '✅  Avis envoyé avec succès ! Merci !',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        backgroundColor: const Color(0xFF1A2E2A), // ← dark green like Figma
+        behavior: SnackBarBehavior.floating,       // ← floating above navbar
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -108,17 +126,17 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Doctor Info Card ────────────────────────────────────────
+            // ── Doctor Info Card
             _buildDoctorCard(),
             const SizedBox(height: 20),
 
-            // ── Your Evaluation ─────────────────────────────────────────
+            // ── Your Evaluation
             _buildSectionTitle('Votre évaluation'),
             const SizedBox(height: 12),
             _buildEvaluationForm(),
             const SizedBox(height: 24),
 
-            // ── Patient Reviews ──────────────────────────────────────────
+            // ── Patient Reviews
             _buildSectionTitle('Avis des patients'),
             const SizedBox(height: 12),
             ..._reviews.map((r) => _ReviewCard(review: r)),
@@ -130,7 +148,7 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
     );
   }
 
-  // ── Doctor Info Card ────────────────────────────────────────────────────────
+  // Doctor Info Card
   Widget _buildDoctorCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -240,7 +258,7 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
     );
   }
 
-  // ── Evaluation Form ─────────────────────────────────────────────────────────
+  //Evaluation Form
   Widget _buildEvaluationForm() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -337,7 +355,7 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  _submitted ? 'Évaluation soumise ✓' : 'Soumettre l\'évaluation',
+                  _submitted ? 'Soumettre l\'évaluation' : 'Soumettre l\'évaluation',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
@@ -392,7 +410,7 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
   }
 }
 
-// ─── Rating Row ───────────────────────────────────────────────────────────────
+// Rating Row
 class _RatingRow extends StatelessWidget {
   final String label;
   final int rating;
@@ -442,7 +460,7 @@ class _RatingRow extends StatelessWidget {
   }
 }
 
-// ─── Progress Row ─────────────────────────────────────────────────────────────
+// Progress Row
 class _ProgressRow extends StatelessWidget {
   final String label;
   final double value;
@@ -473,7 +491,7 @@ class _ProgressRow extends StatelessWidget {
   }
 }
 
-// ─── Review Card ──────────────────────────────────────────────────────────────
+// Review Card
 class _ReviewCard extends StatelessWidget {
   final _PatientReview review;
   const _ReviewCard({required this.review});
@@ -557,7 +575,7 @@ class _ReviewCard extends StatelessWidget {
   }
 }
 
-// ─── Data Model ───────────────────────────────────────────────────────────────
+//Data Model
 class _PatientReview {
   final String name;
   final String date;
