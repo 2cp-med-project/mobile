@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
 
@@ -9,17 +10,18 @@ class DemandesScreen extends StatefulWidget {
 }
 
 class _DemandesScreenState extends State<DemandesScreen> {
-  // Pending access requests
   final List<_AccessRequest> _pendingRequests = [
     _AccessRequest(
       name: 'Dr.Merazi',
+      fullName: 'Dr.Merazi Jeo',
       specialty: 'Cardiologue',
-      hospital: 'EPH-SBA',
+      hospital: 'EPH SBA',
       time: 'Il y a 2 minutes',
+      date: '19/03/2026',
+      isVerified: true,
     ),
   ];
 
-  // Recent requests
   final List<_RecentRequest> _recentRequests = [
     _RecentRequest(
       name: 'Dr.Merazi',
@@ -47,7 +49,69 @@ class _DemandesScreenState extends State<DemandesScreen> {
     ),
   ];
 
+  // ── Show modal with blur ───────────────────────────────────────────────────
+  void _showAuthorizationModal(_AccessRequest request) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+      transitionBuilder: (ctx, animation, _, __) {
+        return Stack(
+          children: [
+            // ── Blurred + dimmed background ──────────────────────────
+            BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: animation.value * 5,
+                sigmaY: animation.value * 5,
+              ),
+              child: Container(
+                color: Colors.black.withValues(alpha: animation.value * 0.4),
+              ),
+            ),
+            // ── Modal ────────────────────────────────────────────────
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.92, end: 1.0).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutBack,
+                  ),
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: _AuthorizationModal(
+                        request: request,
+                        onAccept: () {
+                          Navigator.pop(ctx);
+                          final i = _pendingRequests.indexOf(request);
+                          _acceptRequest(i);
+                        },
+                        onRefuse: () {
+                          Navigator.pop(ctx);
+                          final i = _pendingRequests.indexOf(request);
+                          _refuseRequest(i);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _acceptRequest(int index) {
+    if (index < 0 || index >= _pendingRequests.length) return;
     setState(() {
       final req = _pendingRequests.removeAt(index);
       _recentRequests.insert(
@@ -61,15 +125,22 @@ class _DemandesScreenState extends State<DemandesScreen> {
       );
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Demande acceptée'),
+      SnackBar(
+        content: const Text(
+          '✅  Autorisation accordée',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
         backgroundColor: AppColors.primary,
-        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
 
   void _refuseRequest(int index) {
+    if (index < 0 || index >= _pendingRequests.length) return;
     setState(() {
       final req = _pendingRequests.removeAt(index);
       _recentRequests.insert(
@@ -83,10 +154,16 @@ class _DemandesScreenState extends State<DemandesScreen> {
       );
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Demande refusée'),
+      SnackBar(
+        content: const Text(
+          '❌  Demande refusée',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
         backgroundColor: AppColors.error,
-        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -145,6 +222,7 @@ class _DemandesScreenState extends State<DemandesScreen> {
                     final req = entry.value;
                     return _PendingRequestTile(
                       request: req,
+                      onTap: () => _showAuthorizationModal(req),
                       onAccept: () => _acceptRequest(i),
                       onRefuse: () => _refuseRequest(i),
                     );
@@ -188,7 +266,6 @@ class _DemandesScreenState extends State<DemandesScreen> {
                 }).toList(),
               ),
             ),
-
             const SizedBox(height: 24),
           ],
         ),
@@ -208,13 +285,13 @@ class _DemandesScreenState extends State<DemandesScreen> {
   }
 }
 
-// ─── Pending Request Tile ─────────────────────────────────────────────────────
-class _PendingRequestTile extends StatelessWidget {
+// ─── Authorization Modal ──────────────────────────────────────────────────────
+class _AuthorizationModal extends StatelessWidget {
   final _AccessRequest request;
   final VoidCallback onAccept;
   final VoidCallback onRefuse;
 
-  const _PendingRequestTile({
+  const _AuthorizationModal({
     required this.request,
     required this.onAccept,
     required this.onRefuse,
@@ -222,75 +299,164 @@ class _PendingRequestTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: AppColors.primaryLight,
-                child: const Icon(Icons.person, color: AppColors.primary, size: 26),
+          // ── Title ─────────────────────────────────────────────────
+          const Center(
+            child: Text(
+              'Demander une autorisation',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A2E),
               ),
-              const SizedBox(width: 12),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Doctor info row ────────────────────────────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      request.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF1A1A2E),
-                      ),
-                    ),
-                    Text(
-                      request.specialty,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
                     Row(
                       children: [
-                        const Icon(Icons.location_on_rounded,
-                            size: 11, color: AppColors.primary),
-                        const SizedBox(width: 2),
                         Text(
-                          request.hospital,
+                          'De :  ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                        Text(
+                          request.fullName,
                           style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1A2E),
                           ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    if (request.isVerified)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'Professionnel vérifié',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${request.specialty} - ${request.hospital}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Date : ${request.date}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
                     Text(
                       request.time,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: Colors.grey.shade400,
                       ),
                     ),
                   ],
                 ),
               ),
+              // ── Avatar ──────────────────────────────────────────────
+              CircleAvatar(
+                radius: 34,
+                backgroundColor: AppColors.primaryLight,
+                child: const Icon(
+                  Icons.person,
+                  color: AppColors.primary,
+                  size: 34,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Action buttons
+
+          const SizedBox(height: 20),
+
+          // ── Buttons ───────────────────────────────────────────────
           Row(
             children: [
               Expanded(
                 child: GestureDetector(
+                  onTap: onRefuse,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: const Text(
+                      'Refuser',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
                   onTap: onAccept,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.primary),
+                      color: AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.4),
+                      ),
                     ),
                     child: const Text(
                       'Accepter',
@@ -304,7 +470,105 @@ class _PendingRequestTile extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Pending Request Tile ─────────────────────────────────────────────────────
+class _PendingRequestTile extends StatelessWidget {
+  final _AccessRequest request;
+  final VoidCallback onTap;
+  final VoidCallback onAccept;
+  final VoidCallback onRefuse;
+
+  const _PendingRequestTile({
+    required this.request,
+    required this.onTap,
+    required this.onAccept,
+    required this.onRefuse,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // ── Tap only the doctor info row → opens modal ─────────────
+          GestureDetector(
+            onTap: onTap,
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: AppColors.primaryLight,
+                  child: const Icon(
+                    Icons.person,
+                    color: AppColors.primary,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                      Text(
+                        request.specialty,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_rounded,
+                            size: 11,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            request.hospital,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        request.time,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Buttons stay separate — don't trigger modal ────────────
+          Row(
+            children: [
               Expanded(
                 child: GestureDetector(
                   onTap: onRefuse,
@@ -319,6 +583,28 @@ class _PendingRequestTile extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.error,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: onAccept,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.primary),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      'Accepter',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -375,20 +661,31 @@ class _RecentRequestTile extends StatelessWidget {
               ],
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(statusInfo.icon, size: 14, color: statusInfo.color),
-              const SizedBox(width: 4),
-              Text(
-                statusInfo.label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: statusInfo.color,
-                ),
+          SizedBox(
+            width: 90,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: statusInfo.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
               ),
-            ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(statusInfo.icon, size: 12, color: statusInfo.color),
+                  const SizedBox(width: 4),
+                  Text(
+                    statusInfo.label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: statusInfo.color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -428,15 +725,21 @@ class _RecentRequestTile extends StatelessWidget {
 // ─── Data Models ──────────────────────────────────────────────────────────────
 class _AccessRequest {
   final String name;
+  final String fullName;
   final String specialty;
   final String hospital;
   final String time;
+  final String date;
+  final bool isVerified;
 
   const _AccessRequest({
     required this.name,
+    required this.fullName,
     required this.specialty,
     required this.hospital,
     required this.time,
+    required this.date,
+    required this.isVerified,
   });
 }
 
@@ -467,3 +770,11 @@ class _StatusInfo {
     required this.icon,
   });
 }
+
+// ─── BACKEND TODO ─────────────────────────────────────────────────────────────
+// - _pendingRequests  → replace with DossierService.getPendingRequests()
+// - _recentRequests   → replace with DossierService.getRecentRequests()
+// - _acceptRequest()  → call DossierService.acceptRequest(requestId)
+// - _refuseRequest()  → call DossierService.refuseRequest(requestId)
+// - REAL-TIME MODAL   → Firebase FCM: when backend sends new doctor request,
+//                       call _showAuthorizationModal() using global navigator key

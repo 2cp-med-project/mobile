@@ -3,9 +3,20 @@
 import 'package:flutter/material.dart';
 import 'config/app_routes.dart';
 
+
+/*   void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();  //notif from firebase
+  await NotificationService.init();
+  runApp(const MyApp());
+}
+ */
+
+
 void main() {
   runApp(const MyApp());
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
