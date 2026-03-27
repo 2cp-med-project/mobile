@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'home_screen.dart';
 import 'demandes_screen.dart';
 import 'experiences_screen.dart';
+import 'chatbot_screen.dart';
+
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -18,7 +20,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = const [
     HomeScreen(),
     _PlaceholderScreen(label: 'RDV'),
-    _PlaceholderScreen(label: 'Chat IA'),
+    ChatbotScreen(),
     _PlaceholderScreen(label: 'Carte Santé'),
     _PlaceholderScreen(label: 'Dossier'),
     _PlaceholderScreen(label: 'Profil'),
@@ -82,57 +84,57 @@ class _HealioNavBar extends StatelessWidget {
           ),
         ],
       ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                index: 0,
-                currentIndex: currentIndex,
-                svgAsset: 'assets/icons/home.svg',
-                label: 'Accueil',
-                onTap: onTap,
-              ),
-              _NavItem(
-                index: 1,
-                currentIndex: currentIndex,
-                svgAsset: 'assets/icons/calendar.svg',
-                label: 'RDV',
-                onTap: onTap,
-              ),
-              _NavItem(
-                index: 2,
-                currentIndex: currentIndex,
-                svgAsset: 'assets/icons/chat.svg',
-                label: 'Chat',
-                onTap: onTap,
-              ),
-              _NavItem(
-                index: 3,
-                currentIndex: currentIndex,
-                svgAsset: 'assets/icons/card.svg',
-                label: 'Carte',
-                onTap: onTap,
-              ),
-              _NavItem(
-                index: 4,
-                currentIndex: currentIndex,
-                svgAsset: 'assets/icons/dossier.svg',
-                label: 'Dossier',
-                onTap: onTap,
-              ),
-              _NavItem(
-                index: 5,
-                currentIndex: currentIndex,
-                svgAsset: 'assets/icons/profile.svg',
-                label: 'Profil',
-                onTap: onTap,
-              ),
-            ],
-          ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _NavItem(
+              index: 0,
+              currentIndex: currentIndex,
+              svgAsset: 'assets/icons/home.svg',
+              label: 'Accueil',
+              onTap: onTap,
+            ),
+            _NavItem(
+              index: 1,
+              currentIndex: currentIndex,
+              svgAsset: 'assets/icons/calendar.svg',
+              label: 'RDV',
+              onTap: onTap,
+            ),
+            _NavItem(
+              index: 2,
+              currentIndex: currentIndex,
+              svgAsset: 'assets/icons/chat.svg',
+              label: 'Chat',
+              onTap: onTap,
+            ),
+            _NavItem(
+              index: 3,
+              currentIndex: currentIndex,
+              svgAsset: 'assets/icons/card.svg',
+              label: 'Carte',
+              onTap: onTap,
+            ),
+            _NavItem(
+              index: 4,
+              currentIndex: currentIndex,
+              svgAsset: 'assets/icons/dossier.svg',
+              label: 'Dossier',
+              onTap: onTap,
+            ),
+            _NavItem(
+              index: 5,
+              currentIndex: currentIndex,
+              svgAsset: 'assets/icons/profile.svg',
+              label: 'Profil',
+              onTap: onTap,
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }
 

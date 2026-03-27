@@ -4,6 +4,7 @@ import 'experiences_screen.dart';
 import 'demandes_screen.dart';
 import '../config/app_colors.dart';
 import '../config/storage_helper.dart';
+import 'chatbot_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -225,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   svgAsset: 'assets/icons/file.svg',
                   title: 'Dossier Médical',
                   subtitle: '2 nouveaux rapports',
-                  iconWidth: 18,  // ← smaller only for this card
+                  iconWidth: 18, // ← smaller only for this card
                   iconHeight: 20,
                   onTap: () {},
                 ),
@@ -240,7 +241,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   svgAsset: 'assets/icons/ai.svg',
                   title: 'Assistant AI',
                   subtitle: 'Demandez n\'importe quoi',
-                  onTap: () {},
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ChatbotScreen()),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -424,7 +428,7 @@ class _QuickCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final double iconWidth;  // ← custom icon width
+  final double iconWidth; // ← custom icon width
   final double iconHeight; // ← custom icon height
 
   const _QuickCard({
@@ -432,7 +436,7 @@ class _QuickCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.iconWidth = 22,  // ← default 22 for all cards
+    this.iconWidth = 22, // ← default 22 for all cards
     this.iconHeight = 22, // ← default 22 for all cards
   });
 
@@ -464,7 +468,7 @@ class _QuickCard extends StatelessWidget {
               ),
               child: SvgPicture.asset(
                 svgAsset,
-                width: iconWidth,   // ← uses parameter
+                width: iconWidth, // ← uses parameter
                 height: iconHeight, // ← uses parameter
                 fit: BoxFit.contain,
                 colorFilter: const ColorFilter.mode(
