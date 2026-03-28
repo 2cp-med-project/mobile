@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../config/storage_helper.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -11,18 +12,31 @@ class ChatbotScreen extends StatefulWidget {
 
 class _ChatbotScreenState extends State<ChatbotScreen>
     with SingleTickerProviderStateMixin {
-  // ── Controllers 
+  // ── Controllers
   final TextEditingController _inputCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
 
-  // ── State 
+  // ── State
   bool _isPanelOpen = false;
   bool _isDeleteMode = false;
   bool _isLoading = false;
   String _currentChatId = '1';
+  String _prenom = '';
 
-  // ── Chat histories 
+  @override
+  void initState() {
+    super.initState();
+    _initializeChatMessages();
+    _loadPrenom();
+  }
+
+  Future<void> _loadPrenom() async {
+    final prenom = await StorageHelper.getPrenom();
+    setState(() => _prenom = prenom ?? '');
+  }
+
+  // ── Chat histories
   // Each chat has an id, a title, and a list of messages
   final List<_ChatHistory> _histories = [
     _ChatHistory(id: '1', title: 'Consultation cardiologue'),
@@ -32,54 +46,56 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     _ChatHistory(id: '5', title: 'Discussion 05'),
   ];
 
-  // ── Messages for current chat 
-  final Map<String, List<_Message>> _chatMessages = {
-    '1': [
-      _Message(
-        text:
-            'Bonjour Sarah ! 👋 Je suis votre assistante santé personnelle. Comment puis-je vous aider aujourd\'hui ?',
-        isUser: false,
-        time: '8h00',
-      ),
-      _Message(
-        text: 'Quand est mon prochain rendez-vous ?',
-        isUser: true,
-        time: '8h35',
-      ),
-      _Message(
-        text:
-            'Votre prochain rendez-vous avec le Dr.Merazi (cardiologie) est demain, le 12 mars, à 10h30. N\'oubliez pas d\'être à jeun pendant 4 heures avant ! 🥛',
-        isUser: false,
-        time: '8h38',
-      ),
-      _Message(
-        text: 'Puis-je consulter les résultats de ma dernière analyse sanguine ?',
-        isUser: true,
-        time: '8h40',
-      ),
-      _Message(
-        text:
-            'Votre bilan sanguin du 22 février présente des valeurs normales. Hémoglobine : 13,8 g/dL, cholestérol : 178 mg/dL, glucose :',
-        isUser: false,
-        time: '8h41',
-      ),
-    ],
-  };
+  // ── Messages for current chat
+  late final Map<String, List<_Message>> _chatMessages;
 
-  // ── Selected chats for deletion 
+  void _initializeChatMessages() {
+    _chatMessages = {
+      '1': [
+        _Message(
+          text:
+              'Bonjour $_prenom ! 👋 Je suis votre assistante santé personnelle. Comment puis-je vous aider aujourd\'hui ?',
+          isUser: false,
+          time: '8h00',
+        ),
+        _Message(
+          text: 'Quand est mon prochain rendez-vous ?',
+          isUser: true,
+          time: '8h35',
+        ),
+        _Message(
+          text:
+              'Votre prochain rendez-vous avec le Dr.Merazi (cardiologie) est demain, le 12 mars, à 10h30. N\'oubliez pas d\'être à jeun pendant 4 heures avant ! 🥛',
+          isUser: false,
+          time: '8h38',
+        ),
+        _Message(
+          text:
+              'Puis-je consulter les résultats de ma dernière analyse sanguine ?',
+          isUser: true,
+          time: '8h40',
+        ),
+        _Message(
+          text:
+              'Votre bilan sanguin du 22 février présente des valeurs normales. Hémoglobine : 13,8 g/dL, cholestérol : 178 mg/dL, glucose :',
+          isUser: false,
+          time: '8h41',
+        ),
+      ],
+    };
+  }
+
+  // ── Selected chats for deletion
   final Set<String> _selectedForDelete = {};
 
-  // ── Search 
+  // ── Search
   List<_ChatHistory> get _filteredHistories {
     final q = _searchCtrl.text.toLowerCase();
     if (q.isEmpty) return _histories;
-    return _histories
-        .where((h) => h.title.toLowerCase().contains(q))
-        .toList();
+    return _histories.where((h) => h.title.toLowerCase().contains(q)).toList();
   }
 
-  List<_Message> get _currentMessages =>
-      _chatMessages[_currentChatId] ?? [];
+  List<_Message> get _currentMessages => _chatMessages[_currentChatId] ?? [];
 
   @override
   void dispose() {
@@ -89,7 +105,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     super.dispose();
   }
 
-  // ── Send message 
+  // ── Send message
   void _sendMessage() {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
@@ -122,13 +138,13 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     });
   }
 
-  // ── Quick chip tapped 
+  // ── Quick chip tapped
   void _sendQuickMessage(String text) {
     _inputCtrl.text = text;
     _sendMessage();
   }
 
-  // ── Pick image from gallery 
+  // ── Pick image from gallery
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final file = await picker.pickImage(source: ImageSource.gallery);
@@ -137,7 +153,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     // await ChatbotService.sendImage(file.path, _currentChatId);
   }
 
-  // ── New discussion 
+  // ── New discussion
   void _newDiscussion() {
     final newId = DateTime.now().millisecondsSinceEpoch.toString();
     setState(() {
@@ -160,7 +176,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     // TODO: await ChatbotService.createNewChat() → get real id from backend
   }
 
-  // ── Load existing chat 
+  // ── Load existing chat
   void _loadChat(String id) {
     setState(() {
       _currentChatId = id;
@@ -172,7 +188,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     _scrollToBottom();
   }
 
-  // ── Toggle delete mode 
+  // ── Toggle delete mode
   void _toggleDeleteMode() {
     setState(() {
       _isDeleteMode = !_isDeleteMode;
@@ -180,7 +196,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     });
   }
 
-  // ── Confirm delete 
+  // ── Confirm delete
   void _confirmDelete() {
     if (_selectedForDelete.isEmpty) return;
     showDialog(
@@ -198,30 +214,35 @@ class _ChatbotScreenState extends State<ChatbotScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler',
-                style: TextStyle(color: Colors.grey)),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               setState(() {
                 _histories.removeWhere(
-                    (h) => _selectedForDelete.contains(h.id));
+                  (h) => _selectedForDelete.contains(h.id),
+                );
                 for (final id in _selectedForDelete) {
                   _chatMessages.remove(id);
                 }
                 if (_selectedForDelete.contains(_currentChatId)) {
-                  _currentChatId =
-                      _histories.isNotEmpty ? _histories.first.id : '';
+                  _currentChatId = _histories.isNotEmpty
+                      ? _histories.first.id
+                      : '';
                 }
                 _selectedForDelete.clear();
                 _isDeleteMode = false;
               });
               // TODO: await ChatbotService.deleteChats(_selectedForDelete);
             },
-            child: const Text('Supprimer',
-                style: TextStyle(
-                    color: Color(0xFFE53935), fontWeight: FontWeight.w600)),
+            child: const Text(
+              'Supprimer',
+              style: TextStyle(
+                color: Color(0xFFE53935),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -251,7 +272,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
       backgroundColor: const Color(0xFFF0FBF8),
       body: Stack(
         children: [
-          // ── Main chat area 
+          // ── Main chat area
           Column(
             children: [
               _buildHeader(),
@@ -261,16 +282,14 @@ class _ChatbotScreenState extends State<ChatbotScreen>
             ],
           ),
 
-          // ── Side panel overlay 
+          // ── Side panel overlay
           if (_isPanelOpen) ...[
             // Blur background
             GestureDetector(
               onTap: () => setState(() => _isPanelOpen = false),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.2),
-                ),
+                child: Container(color: Colors.black.withValues(alpha: 0.2)),
               ),
             ),
             // Panel
@@ -287,7 +306,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     );
   }
 
-  // ── Header 
+  // ── Header
   Widget _buildHeader() {
     return SafeArea(
       child: Container(
@@ -325,41 +344,18 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                   ),
                   Row(
                     children: [
-                      Icon(Icons.circle,
-                          color: Color(0xFF1FAF87), size: 8),
+                      Icon(Icons.circle, color: Color(0xFF1FAF87), size: 8),
                       SizedBox(width: 4),
                       Text(
                         'En ligne · Toujours là pour vous',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            // Search icon
-            GestureDetector(
-              onTap: () => setState(() {
-                _isPanelOpen = true;
-                _isDeleteMode = false;
-              }),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FBF8),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.search_rounded,
-                  color: Color(0xFF1FAF87),
-                  size: 20,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
+
             // Menu icon
             GestureDetector(
               onTap: () => setState(() => _isPanelOpen = !_isPanelOpen),
@@ -382,7 +378,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     );
   }
 
-  // ── Messages list 
+  // ── Messages list
   Widget _buildMessages() {
     final messages = _currentMessages;
     return ListView.builder(
@@ -402,12 +398,14 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Column(
-        crossAxisAlignment:
-            msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: msg.isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment:
-                msg.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: msg.isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               // AI avatar
@@ -420,8 +418,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                     color: const Color(0xFF1FAF87).withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.smart_toy_rounded,
-                      color: Color(0xFF1FAF87), size: 14),
+                  child: const Icon(
+                    Icons.smart_toy_rounded,
+                    color: Color(0xFF1FAF87),
+                    size: 14,
+                  ),
                 ),
               ],
 
@@ -429,11 +430,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
               Flexible(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
-                    color: msg.isUser
-                        ? const Color(0xFF1FAF87)
-                        : Colors.white,
+                    color: msg.isUser ? const Color(0xFF1FAF87) : Colors.white,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
@@ -452,7 +453,9 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                     msg.text,
                     style: TextStyle(
                       fontSize: 13,
-                      color: msg.isUser ? Colors.white : const Color(0xFF1A1A2E),
+                      color: msg.isUser
+                          ? Colors.white
+                          : const Color(0xFF1A1A2E),
                       height: 1.5,
                     ),
                   ),
@@ -490,8 +493,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
               color: const Color(0xFF1FAF87).withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.smart_toy_rounded,
-                color: Color(0xFF1FAF87), size: 14),
+            child: const Icon(
+              Icons.smart_toy_rounded,
+              color: Color(0xFF1FAF87),
+              size: 14,
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -520,31 +526,35 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     );
   }
 
-  // ── Quick chips 
-  Widget _buildQuickChips() {
-    final chips = [
-      ('📋 Mes rapports', 'Affiche mes rapports médicaux'),
-      ('💊 Mes médicaments', 'Affiche mes médicaments'),
-      ('📅 Les rendez-vous d\'auj', 'Affiche mes rendez-vous d\'aujourd\'hui'),
-    ];
-    return Container(
-      color: Colors.white,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: chips.map((chip) {
-            return GestureDetector(
+  // ── Quick chips
+ Widget _buildQuickChips() {
+  final chips = [
+    ('📋 Mes rapports', 'Affiche mes rapports médicaux'),
+    ('💊 Mes médicaments', 'Affiche mes médicaments'),
+    ('📞 Contacts D’urgence', 'Affiche des contacts d\'urgence'),
+  ];
+
+  return Container(
+    color: Colors.white,
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: chips.map((chip) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InkWell(
               onTap: () => _sendQuickMessage(chip.$2),
+              borderRadius: BorderRadius.circular(20),
+              splashColor: const Color(0xFFF0FBF8), // ripple color
+              highlightColor: const Color(0xFFF0FBF8), // pressed color
               child: Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 7),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0FBF8),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: const Color(0xFF1FAF87).withValues(alpha: 0.3),
+                    color: const Color(0xFF1FAF87).withOpacity(0.3),
                   ),
                 ),
                 child: Text(
@@ -556,90 +566,103 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                   ),
                 ),
               ),
-            );
-          }).toList(),
-        ),
+            ),
+          );
+        }).toList(),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // ── Input bar 
   Widget _buildInputBar() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      child: Row(
-        children: [
-          // Gallery button
-          GestureDetector(
-            onTap: _pickImage,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FBF8),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.photo_outlined,
-                color: Color(0xFF1FAF87),
-                size: 20,
-              ),
+  return Container(
+    color: Colors.white,
+    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+    child: Row(
+      children: [
+        //  Gallery Button (circle, small vertical padding)
+        GestureDetector(
+          onTap: _pickImage,
+          child: Container(
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.symmetric(vertical: 2),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1FAF87), // primary color
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.photo_outlined,
+              color: Colors.white,
+              size: 20,
             ),
           ),
-          const SizedBox(width: 8),
+        ),
+        const SizedBox(width: 8),
 
-          // Text field
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FBF8),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: TextField(
-                controller: _inputCtrl,
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'Demander n\'importe quoi...',
-                  hintStyle: TextStyle(
-                    color: Colors.grey.shade400,
-                    fontSize: 13,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+        // Text Field with green border when focused
+        Expanded(
+          child: Focus(
+            onFocusChange: (hasFocus) {
+              // rebuild to update border color
+              // optional: you can use a StatefulBuilder if needed
+            },
+            child: TextField(
+              controller: _inputCtrl,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Demander n\'importe quoi...',
+                hintStyle: TextStyle(
+                  color: const Color(0xFFBDBDBD),
+                  fontSize: 13,
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(color: const Color(0xFF5FCFAA) , width: 0.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF1FAF87), // primary color when focused
+                    width: 0.5,
                   ),
                 ),
-                onSubmitted: (_) => _sendMessage(),
               ),
+              onSubmitted: (_) => _sendMessage(),
             ),
           ),
-          const SizedBox(width: 8),
+        ),
+        const SizedBox(width: 8),
 
-          // Send button
-          GestureDetector(
-            onTap: _sendMessage,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1FAF87),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.send_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
+        //  Send Button (changes color on tap)
+        GestureDetector(
+          onTap: _sendMessage,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: _inputCtrl.text.isEmpty
+                  ? const Color(0xFFF0FBF8)
+                  : const Color(0xFF1FAF87), // green if text exists
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(
+              Icons.send_rounded,
+              color: _inputCtrl.text.isEmpty
+                  ? const Color(0xFF1FAF87)
+                  : Colors.white, // white if background green
+              size: 20,
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
-  // ── Side panel 
+  // ── Side panel
   Widget _buildSidePanel() {
     return Container(
       decoration: const BoxDecoration(
@@ -661,7 +684,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           children: [
             const SizedBox(height: 12),
 
-            // ── Search bar 
+            // ── Search bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Container(
@@ -676,19 +699,23 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                   decoration: InputDecoration(
                     hintText: 'Recherche',
                     hintStyle: TextStyle(
-                        color: Colors.grey.shade400, fontSize: 13),
-                    prefixIcon: Icon(Icons.search_rounded,
-                        color: Colors.grey.shade400, size: 18),
+                      color: Colors.grey.shade400,
+                      fontSize: 13,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: Colors.grey.shade400,
+                      size: 18,
+                    ),
                     border: InputBorder.none,
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 12),
 
-            // ── Nouvelle discussion button 
+            // ── Nouvelle discussion button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: GestureDetector(
@@ -705,8 +732,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.edit_outlined,
-                          color: Color(0xFF1FAF87), size: 16),
+                      Icon(
+                        Icons.edit_outlined,
+                        color: Color(0xFF1FAF87),
+                        size: 16,
+                      ),
                       SizedBox(width: 6),
                       Text(
                         'Nouvelle discussion',
@@ -723,7 +753,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
             ),
             const SizedBox(height: 16),
 
-            // ── DISCUSSIONS label 
+            // ── DISCUSSIONS label
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -742,7 +772,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
             ),
             const SizedBox(height: 8),
 
-            // ── Chat list 
+            // ── Chat list
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -770,13 +800,15 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(bottom: 4),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: isActive && !_isDeleteMode
                             ? const Color(0xFF1FAF87).withValues(alpha: 0.12)
                             : isSelected
-                                ? const Color(0xFFE53935).withValues(alpha: 0.08)
-                                : Colors.transparent,
+                            ? const Color(0xFFE53935).withValues(alpha: 0.08)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
@@ -799,8 +831,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: isSelected
-                                  ? const Icon(Icons.close,
-                                      color: Colors.white, size: 12)
+                                  ? const Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                      size: 12,
+                                    )
                                   : null,
                             ),
                           ],
@@ -828,14 +863,14 @@ class _ChatbotScreenState extends State<ChatbotScreen>
               ),
             ),
 
-            // ── Supprimer button 
+            // ── Supprimer button
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
               child: GestureDetector(
                 onTap: _isDeleteMode
                     ? (_selectedForDelete.isNotEmpty
-                        ? _confirmDelete
-                        : _toggleDeleteMode)
+                          ? _confirmDelete
+                          : _toggleDeleteMode)
                     : _toggleDeleteMode,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 10),
@@ -849,8 +884,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.delete_outline_rounded,
-                          color: Color(0xFFE53935), size: 16),
+                      const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Color(0xFFE53935),
+                        size: 16,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         _isDeleteMode && _selectedForDelete.isNotEmpty
@@ -874,7 +912,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   }
 }
 
-// ─── Data Models 
+// ─── Data Models
 class _Message {
   final String text;
   final bool isUser;
