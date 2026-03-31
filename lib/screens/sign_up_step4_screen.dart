@@ -1,7 +1,10 @@
 // screens/sign_up_step4_screen.dart
-// Sign up step 4 — ID + contact d'urgence (max 5, dynamic via + button)
+// Sign up step 4 — ID + contacts d'urgence (max 4, dynamic via + button)
+// BACKEND TODO: include patient_id and emergency_contacts in POST /api/auth/register
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_button.dart';
 import '../widgets/healio_logo.dart';
@@ -21,48 +24,71 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
   final _idController = TextEditingController();
   String? _idError;
 
-  // starts with 1 emergency contact field, max 5
-  final List<TextEditingController> _emergencyControllers = [
-    TextEditingController(),
-  ];
-  final List<String?> _emergencyErrors = [null];
+  // Each emergency contact has a name + phone field pair
+  final List<TextEditingController> _nameControllers  = [TextEditingController()];
+  final List<TextEditingController> _phoneControllers = [TextEditingController()];
+  final List<String?> _nameErrors  = [null];
+  final List<String?> _phoneErrors = [null];
 
   @override
   void dispose() {
     _idController.dispose();
-    for (final c in _emergencyControllers) c.dispose();
+    for (final c in _nameControllers)  c.dispose();
+    for (final c in _phoneControllers) c.dispose();
     super.dispose();
   }
 
-  // add a new emergency contact field (max 5)
   void _addEmergencyField() {
-    if (_emergencyControllers.length >= 4) return;
+    if (_nameControllers.length >= 4) return;
     setState(() {
-      _emergencyControllers.add(TextEditingController());
-      _emergencyErrors.add(null);
+      _nameControllers.add(TextEditingController());
+      _phoneControllers.add(TextEditingController());
+      _nameErrors.add(null);
+      _phoneErrors.add(null);
     });
   }
 
-  void _onSuivantePressed() {
+  void _onSuivantePressed() async {
     setState(() {
       _idError = null;
-      for (int i = 0; i < _emergencyErrors.length; i++) {
-        _emergencyErrors[i] = null;
+      for (int i = 0; i < _nameErrors.length; i++) {
+        _nameErrors[i]  = null;
+        _phoneErrors[i] = null;
       }
     });
 
     bool hasError = false;
+
     setState(() => _idError = Validators.required(_idController.text));
     if (_idError != null) hasError = true;
 
-    for (int i = 0; i < _emergencyControllers.length; i++) {
-      if (_emergencyControllers[i].text.trim().isEmpty) { 
-        setState(() => _emergencyErrors[i] = 'Requis');
+    for (int i = 0; i < _nameControllers.length; i++) {
+      if (_nameControllers[i].text.trim().isEmpty) {
+        setState(() => _nameErrors[i] = 'Requis');
+        hasError = true;
+      }
+      if (_phoneControllers[i].text.trim().isEmpty) {
+        setState(() => _phoneErrors[i] = 'Requis');
         hasError = true;
       }
     }
+
     if (hasError) return;
-    
+
+    // ── Persist step 4 data ───────────────────────────────────────────────
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString('patient_id', _idController.text.trim());
+
+    // Store contacts as JSON list: [{name, phone}, ...]
+    final contacts = List.generate(_nameControllers.length, (i) => {
+      'name':  _nameControllers[i].text.trim(),
+      'phone': _phoneControllers[i].text.trim(),
+    });
+    await prefs.setString('emergency_contacts', jsonEncode(contacts));
+    // ─────────────────────────────────────────────────────────────────────
+
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const SignUpStep5Screen()),
@@ -76,7 +102,6 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
       body: Stack(
         children: [
           const SignupBubbles(),
-
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -84,35 +109,23 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 45),
-
                   const HealioLogo(),
-
                   const SizedBox(height: 40),
-
-                  // title
                   const Text(
                     'Pour la sécurité',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                    ),
+                        color: Colors.black87,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700),
                   ),
-
                   const SizedBox(height: 10),
-
-                  // subtitle
                   const Text(
-                    'Saisissez votre ID et votre contact\nd\'urgence',
+                    'Saisissez votre ID et vos contacts\nd\'urgence',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 12,
-                      height: 1.5,
-                    ),
+                        color: Colors.black54, fontSize: 12, height: 1.5),
                   ),
-
                   const SizedBox(height: 35),
 
                   // ID field
@@ -123,72 +136,86 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
                     onChanged: (_) => setState(() => _idError = null),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  // emergency contact fields
-                  ...List.generate(_emergencyControllers.length, (i) {
+                  // Emergency contact pairs (name + phone)
+                  ...List.generate(_nameControllers.length, (i) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // contact field
-                          Expanded(
-                            child: AppTextField(
-                              controller: _emergencyControllers[i],
-                              hint: 'Contact d\'urgence',
-                              keyboardType: TextInputType.phone,
-                              errorText: _emergencyErrors[i],
-                              onChanged: (_) =>
-                                  setState(() => _emergencyErrors[i] = null),
+                          // Contact label
+                          Text(
+                            'Contact d\'urgence ${i + 1}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textGrey,
                             ),
                           ),
-
-                          // + button
-                          if (i == _emergencyControllers.length - 1 &&
-                              _emergencyControllers.length < 4) ...[
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: _addEmergencyField,
-                              child: Container(
-                                height: 50,
-                                width: 40,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                    width: 1.2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.add,
-                                  color: AppColors.primary,
-                                  size: 20,
+                          const SizedBox(height: 6),
+                          // Name field
+                          AppTextField(
+                            controller: _nameControllers[i],
+                            hint: 'Nom complet',
+                            errorText: _nameErrors[i],
+                            onChanged: (_) =>
+                                setState(() => _nameErrors[i] = null),
+                          ),
+                          const SizedBox(height: 8),
+                          // Phone row + add button on last
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: AppTextField(
+                                  controller: _phoneControllers[i],
+                                  hint: 'Numéro de téléphone',
+                                  keyboardType: TextInputType.phone,
+                                  errorText: _phoneErrors[i],
+                                  onChanged: (_) =>
+                                      setState(() => _phoneErrors[i] = null),
                                 ),
                               ),
-                            ),
-                          ],
+                              // + button only on last row and under limit
+                              if (i == _nameControllers.length - 1 &&
+                                  _nameControllers.length < 4) ...[
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: _addEmergencyField,
+                                  child: Container(
+                                    height: 50,
+                                    width: 40,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: AppColors.border, width: 1.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(Icons.add,
+                                        color: AppColors.primary, size: 20),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ],
                       ),
                     );
                   }),
 
-                  // show max reached message
-                  if (_emergencyControllers.length == 4)
+                  if (_nameControllers.length == 4)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
                         'Maximum 4 contacts atteint',
                         style: TextStyle(
-                          color: AppColors.textGrey,
-                          fontSize: 11,
-                        ),
+                            color: AppColors.textGrey, fontSize: 11),
                       ),
                     ),
 
-                  const SizedBox(height: 160),
+                  const SizedBox(height: 60),
 
-                  // suivant button
                   SizedBox(
                     width: 140,
                     child: AppButton(

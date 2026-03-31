@@ -1,11 +1,13 @@
-// Logic required in the fields (case of mdp<8, phone/email invalid, empty fields...)
+// screens/sign_up_step2_screen.dart
+// Sign up step 2 — date de naissance, lieu, sexe
+// BACKEND TODO: include these fields in final POST /api/auth/register payload
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_button.dart';
 import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
-import '../config/app_colors.dart';
 import 'sign_up_step3_screen.dart';
 import '../config/validators.dart';
 
@@ -17,11 +19,11 @@ class SignUpStep2Screen extends StatefulWidget {
 }
 
 class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
-  final _jourController = TextEditingController();
-  final _moisController = TextEditingController();
+  final _jourController  = TextEditingController();
+  final _moisController  = TextEditingController();
   final _anneeController = TextEditingController();
-  final _lieuController = TextEditingController();
-  final _sexeController = TextEditingController();
+  final _lieuController  = TextEditingController();
+  final _sexeController  = TextEditingController();
 
   String? _jourError;
   String? _moisError;
@@ -39,21 +41,37 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
     super.dispose();
   }
 
-  void _onSuivantePressed() {
+  void _onSuivantePressed() async {
     setState(() {
-      _jourError = null;
-      _moisError = null;
+      _jourError  = null;
+      _moisError  = null;
       _anneeError = null;
-      _lieuError = null;
-      _sexeError = null;
+      _lieuError  = null;
+      _sexeError  = null;
     });
 
-    setState(() => _jourError = Validators.day(_jourController.text));
-    setState(() => _moisError = Validators.month(_moisController.text));
+    setState(() => _jourError  = Validators.day(_jourController.text));
+    setState(() => _moisError  = Validators.month(_moisController.text));
     setState(() => _anneeError = Validators.year(_anneeController.text));
-    setState(() => _lieuError = Validators.required(_lieuController.text));
-    setState(() => _sexeError = Validators.required(_sexeController.text));
+    setState(() => _lieuError  = Validators.required(_lieuController.text));
+    setState(() => _sexeError  = Validators.required(_sexeController.text));
 
+    if (_jourError != null || _moisError != null || _anneeError != null ||
+        _lieuError != null || _sexeError != null) return;
+
+    // ── Persist step 2 data ───────────────────────────────────────────────
+    final prefs = await SharedPreferences.getInstance();
+    // Format: "06 / 10 / 2000" — readable in profile screen
+    final dateFormatted =
+        '${_jourController.text.trim().padLeft(2, '0')} / '
+        '${_moisController.text.trim().padLeft(2, '0')} / '
+        '${_anneeController.text.trim()}';
+    await prefs.setString('date_naissance', dateFormatted);
+    await prefs.setString('lieu_naissance', _lieuController.text.trim());
+    await prefs.setString('genre',          _sexeController.text.trim());
+    // ─────────────────────────────────────────────────────────────────────
+
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const SignUpStep3Screen()),
@@ -66,9 +84,7 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
       backgroundColor: const Color(0xFFEEFBF7),
       body: Stack(
         children: [
-          // background
           const SignupBubbles(),
-
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -76,44 +92,29 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 45),
-
-                  // logo
                   const Center(child: HealioLogo()),
-
                   const SizedBox(height: 60),
-
-                  // title
                   const Center(
                     child: Text(
                       'Informations générales',
                       style: TextStyle(
-                        color: Colors.black87,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
+                          color: Colors.black87,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700),
                     ),
                   ),
-
                   const SizedBox(height: 10),
-
-                  // subtitle
                   const Center(
                     child: Text(
                       'Veuillez indiquer votre date et lieu\n de naissance ainsi que votre genre.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
-                        height: 1.5,
-                      ),
+                          color: Colors.black54, fontSize: 12, height: 1.5),
                     ),
                   ),
-
                   const SizedBox(height: 30),
-
                   Row(
                     children: [
-                      // jour
                       Expanded(
                         child: AppTextField(
                           controller: _jourController,
@@ -124,7 +125,6 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // mois
                       Expanded(
                         child: AppTextField(
                           controller: _moisController,
@@ -135,42 +135,33 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // année
                       Expanded(
                         child: AppTextField(
                           controller: _anneeController,
                           hint: 'Année',
                           keyboardType: TextInputType.number,
                           errorText: _anneeError,
-                          onChanged: (_) => setState(() => _anneeError = null),
+                          onChanged: (_) =>
+                              setState(() => _anneeError = null),
                         ),
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 16),
-
-                  // lieu de naissance
                   AppTextField(
                     controller: _lieuController,
                     hint: 'Lieu de naissance',
                     errorText: _lieuError,
                     onChanged: (_) => setState(() => _lieuError = null),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // sexe
                   AppTextField(
                     controller: _sexeController,
                     hint: 'Sexe',
                     errorText: _sexeError,
                     onChanged: (_) => setState(() => _sexeError = null),
                   ),
-
                   const SizedBox(height: 130),
-
-                  // suivant button
                   Align(
                     alignment: Alignment.center,
                     child: SizedBox(

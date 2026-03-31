@@ -531,7 +531,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   final chips = [
     ('📋 Mes rapports', 'Affiche mes rapports médicaux'),
     ('💊 Mes médicaments', 'Affiche mes médicaments'),
-    ('📞 Contacts D’urgence', 'Affiche des contacts d\'urgence'),
+    ('📞 Numeros D’urgence', 'Affiche les numeros d\'urgence'),
   ];
 
   return Container(

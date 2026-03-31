@@ -5,6 +5,7 @@ import 'home_screen.dart';
 import 'demandes_screen.dart';
 import 'experiences_screen.dart';
 import 'chatbot_screen.dart';
+import 'profile_screen.dart';
 
 
 class MainScreen extends StatefulWidget {
@@ -23,7 +24,7 @@ class _MainScreenState extends State<MainScreen> {
     ChatbotScreen(),
     _PlaceholderScreen(label: 'Carte Santé'),
     _PlaceholderScreen(label: 'Dossier'),
-    _PlaceholderScreen(label: 'Profil'),
+    ProfileScreen(),
   ];
 
   @override
