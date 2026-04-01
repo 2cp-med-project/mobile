@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'experiences_screen.dart';
 import 'demandes_screen.dart';
 import '../config/app_colors.dart';
 import '../config/storage_helper.dart';
 import 'chatbot_screen.dart';
+import 'appointments_screen.dart'; // for Appointment model + screen
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +20,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String _prenom = '';
   String _nom = '';
 
+  // Next appointment — loaded from SharedPreferences (same key as appointments_screen)
+  Appointment? _nextAppointment;
+
   @override
   void initState() {
     super.initState();
@@ -26,12 +32,50 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadUser() async {
     final nom = await StorageHelper.getNom();
     final prenom = await StorageHelper.getPrenom();
+
+    // Load appointments and find the one closest to tomorrow
+    // BACKEND TODO: replace with GET /api/appointments/next
+    Appointment? next;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('appointments');
+      if (raw != null) {
+        final list = List<Map<String, dynamic>>.from(jsonDecode(raw));
+        final appts = list.map(Appointment.fromJson).toList();
+        final now = DateTime.now();
+
+        // Filter future (non-terminated) appointments, sort by date ascending
+        final upcoming =
+            appts
+                .where(
+                  (a) =>
+                      a.status != 'termine' &&
+                      a.date.isAfter(now.subtract(const Duration(hours: 1))),
+                )
+                .toList()
+              ..sort((a, b) => a.date.compareTo(b.date));
+
+        if (upcoming.isNotEmpty) next = upcoming.first;
+      }
+    } catch (_) {}
+
     if (mounted) {
       setState(() {
         _nom = nom ?? '';
         _prenom = prenom ?? '';
+        _nextAppointment = next;
       });
     }
+  }
+
+  // Called when returning from AppointmentsScreen so header updates
+  void _goToAppointments() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AppointmentsScreen()),
+    );
+    // Refresh after returning — user may have added a new appointment
+    _loadUser();
   }
 
   @override
@@ -84,121 +128,169 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Header Card ─────────────────────────────────────────────────────────────
+  // ── Header Card ──────────────────────────────────────────────────────────────
   Widget _buildHeaderCard() {
+    // Build reminder label from real data
+    final String reminderLabel = _nextAppointmentLabel();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1FAF87), Color(0xFF17C99E)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      child: GestureDetector(
+        onTap: _goToAppointments, // ← tapping navigates to appointments
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1FAF87), Color(0xFF17C99E)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
           ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              right: 10,
-              top: 10,
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.15),
+          child: Stack(
+            children: [
+              Positioned(
+                right: 10,
+                top: 10,
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.15),
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              right: 30,
-              top: 40,
-              child: Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.1),
+              Positioned(
+                right: 30,
+                top: 40,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Bonjour',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      fontSize: 14,
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bonjour',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$_nom $_prenom ',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 4),
+                    Text(
+                      '$_nom $_prenom ',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.calendar_today_rounded,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Prochain rendez-vous',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                              ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
                             ),
-                            Text(
-                              'Dr.Merazi - Demain, 10:30 AM',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: const Icon(
+                              Icons.calendar_today_rounded,
+                              color: Colors.white,
+                              size: 14,
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Prochain rendez-vous',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                Text(
+                                  reminderLabel,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Arrow hint — shows user it's tappable
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: Colors.white70,
+                            size: 13,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  /// Builds the label shown in the reminder chip.
+  /// Uses real appointment data if available, falls back to placeholder.
+  String _nextAppointmentLabel() {
+    if (_nextAppointment == null) {
+      return 'Aucun rendez-vous à venir';
+    }
+
+    final appt = _nextAppointment!;
+    final now = DateTime.now();
+    final diff = DateTime(
+      appt.date.year,
+      appt.date.month,
+      appt.date.day,
+    ).difference(DateTime(now.year, now.month, now.day)).inDays;
+
+    String dayLabel;
+    if (diff == 0) {
+      dayLabel = "Aujourd'hui";
+    } else if (diff == 1) {
+      dayLabel = 'Demain';
+    } else if (diff <= 6) {
+      dayLabel = 'Dans $diff jours';
+    } else {
+      // Format as DD/MM/YYYY
+      dayLabel =
+          '${appt.date.day.toString().padLeft(2, '0')}/'
+          '${appt.date.month.toString().padLeft(2, '0')}/'
+          '${appt.date.year}';
+    }
+
+    return '${appt.doctorName} - $dayLabel, ${appt.time}';
   }
 
   // ── Quick Access Cards ───────────────────────────────────────────────────────
@@ -226,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   svgAsset: 'assets/icons/file.svg',
                   title: 'Dossier Médical',
                   subtitle: '2 nouveaux rapports',
-                  iconWidth: 18, // ← smaller only for this card
+                  iconWidth: 18,
                   iconHeight: 20,
                   onTap: () {},
                 ),
@@ -292,7 +384,6 @@ class _HomeScreenState extends State<HomeScreen> {
         time: '10h00',
         dateLabel: 'Demain',
         dateColor: const Color(0xFF1FAF87),
-        avatarUrl: '',
       ),
       _RdvData(
         name: 'Dr.Belsoumati',
@@ -300,7 +391,6 @@ class _HomeScreenState extends State<HomeScreen> {
         time: '09h00',
         dateLabel: '08 Mars',
         dateColor: const Color(0xFF7B61FF),
-        avatarUrl: '',
       ),
       _RdvData(
         name: 'Laboratoire Allal',
@@ -308,7 +398,6 @@ class _HomeScreenState extends State<HomeScreen> {
         time: '08h30',
         dateLabel: '22 Mars',
         dateColor: const Color(0xFF00C3D0),
-        avatarUrl: '',
       ),
     ];
 
@@ -346,6 +435,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+    // BACKEND TODO: replace hardcoded list with AppointmentService.getUpcoming()
   }
 
   // ── Demandes récentes ────────────────────────────────────────────────────────
@@ -419,6 +509,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+    // BACKEND TODO: replace with DossierService.getRecentRequests()
   }
 }
 
@@ -428,16 +519,16 @@ class _QuickCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final double iconWidth; // ← custom icon width
-  final double iconHeight; // ← custom icon height
+  final double iconWidth;
+  final double iconHeight;
 
   const _QuickCard({
     required this.svgAsset,
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.iconWidth = 22, // ← default 22 for all cards
-    this.iconHeight = 22, // ← default 22 for all cards
+    this.iconWidth = 22,
+    this.iconHeight = 22,
   });
 
   @override
@@ -468,8 +559,8 @@ class _QuickCard extends StatelessWidget {
               ),
               child: SvgPicture.asset(
                 svgAsset,
-                width: iconWidth, // ← uses parameter
-                height: iconHeight, // ← uses parameter
+                width: iconWidth,
+                height: iconHeight,
                 fit: BoxFit.contain,
                 colorFilter: const ColorFilter.mode(
                   AppColors.primary,
@@ -505,7 +596,6 @@ class _RdvData {
   final String time;
   final String dateLabel;
   final Color dateColor;
-  final String avatarUrl;
 
   const _RdvData({
     required this.name,
@@ -513,7 +603,6 @@ class _RdvData {
     required this.time,
     required this.dateLabel,
     required this.dateColor,
-    required this.avatarUrl,
   });
 }
 
@@ -681,7 +770,8 @@ class _DemandeTile extends StatelessWidget {
 
 // ─── BACKEND TODO ─────────────────────────────────────────────────────────────
 // - _loadUser()              → replace StorageHelper with real user profile from API
-// - _buildHeaderCard()       → "Dr.Merazi - Demain, 10:30 AM" from AppointmentService.getNext()
+// - _nextAppointmentLabel()  → replace SharedPreferences read with GET /api/appointments/next
+// - _buildHeaderCard()       → already reactive to _nextAppointment
 // - _buildRdvList()          → replace hardcoded list with AppointmentService.getUpcoming()
 // - _buildDemandesRecentes() → replace hardcoded list with DossierService.getRecentRequests()
 // - _buildQuickCards()       → "3 demandes" subtitle from real count from API

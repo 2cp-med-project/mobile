@@ -6,6 +6,7 @@ import 'demandes_screen.dart';
 import 'experiences_screen.dart';
 import 'chatbot_screen.dart';
 import 'profile_screen.dart';
+import 'appointments_screen.dart';
 
 
 class MainScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    _PlaceholderScreen(label: 'RDV'),
+    AppointmentsScreen(),
     ChatbotScreen(),
     _PlaceholderScreen(label: 'Carte Santé'),
     _PlaceholderScreen(label: 'Dossier'),
