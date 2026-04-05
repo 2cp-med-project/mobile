@@ -8,6 +8,7 @@ import '../widgets/app_text_field.dart';
 import '../widgets/app_button.dart';
 import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
+import '../config/app_colors.dart';
 import 'sign_up_step3_screen.dart';
 import '../config/validators.dart';
 
@@ -19,11 +20,14 @@ class SignUpStep2Screen extends StatefulWidget {
 }
 
 class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
+  // Date — kept as free text fields exactly as before
   final _jourController  = TextEditingController();
   final _moisController  = TextEditingController();
   final _anneeController = TextEditingController();
   final _lieuController  = TextEditingController();
-  final _sexeController  = TextEditingController();
+
+  // Gender — chosen from bottom sheet instead of typed
+  String? _sexe;
 
   String? _jourError;
   String? _moisError;
@@ -37,8 +41,87 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
     _moisController.dispose();
     _anneeController.dispose();
     _lieuController.dispose();
-    _sexeController.dispose();
     super.dispose();
+  }
+
+  // ── Gender picker (bottom sheet) ─────────────────────────────────────────
+  void _pickGender() {
+    final options = ['Homme', 'Femme'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // handle bar
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Text('Genre',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87)),
+            const SizedBox(height: 14),
+            ...options.map((opt) {
+              final selected = _sexe == opt;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _sexe      = opt;
+                    _sexeError = null;
+                  });
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : const Color(0xFFF4FBF8),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: selected ? AppColors.primary : Colors.transparent,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(children: [
+                    Text(opt,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: selected
+                                ? AppColors.primary
+                                : Colors.black87)),
+                    const Spacer(),
+                    if (selected)
+                      const Icon(Icons.check_circle,
+                          color: AppColors.primary, size: 18),
+                  ]),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
   }
 
   void _onSuivantePressed() async {
@@ -54,21 +137,20 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
     setState(() => _moisError  = Validators.month(_moisController.text));
     setState(() => _anneeError = Validators.year(_anneeController.text));
     setState(() => _lieuError  = Validators.required(_lieuController.text));
-    setState(() => _sexeError  = Validators.required(_sexeController.text));
+    setState(() => _sexeError  = _sexe == null ? 'Requis' : null);
 
     if (_jourError != null || _moisError != null || _anneeError != null ||
         _lieuError != null || _sexeError != null) return;
 
-    // ── Persist step 2 data ───────────────────────────────────────────────
+    // ── Persist step 2 data ──────────────────────────────────────────────
     final prefs = await SharedPreferences.getInstance();
-    // Format: "06 / 10 / 2000" — readable in profile screen
     final dateFormatted =
         '${_jourController.text.trim().padLeft(2, '0')} / '
         '${_moisController.text.trim().padLeft(2, '0')} / '
         '${_anneeController.text.trim()}';
     await prefs.setString('date_naissance', dateFormatted);
     await prefs.setString('lieu_naissance', _lieuController.text.trim());
-    await prefs.setString('genre',          _sexeController.text.trim());
+    await prefs.setString('genre',          _sexe!);
     // ─────────────────────────────────────────────────────────────────────
 
     if (!mounted) return;
@@ -113,6 +195,8 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                     ),
                   ),
                   const SizedBox(height: 30),
+
+                  // ── Date fields — unchanged ──────────────────────────────
                   Row(
                     children: [
                       Expanded(
@@ -141,26 +225,43 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                           hint: 'Année',
                           keyboardType: TextInputType.number,
                           errorText: _anneeError,
-                          onChanged: (_) =>
-                              setState(() => _anneeError = null),
+                          onChanged: (_) => setState(() => _anneeError = null),
                         ),
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 16),
+
+                  // ── Lieu de naissance — unchanged ────────────────────────
                   AppTextField(
                     controller: _lieuController,
                     hint: 'Lieu de naissance',
                     errorText: _lieuError,
                     onChanged: (_) => setState(() => _lieuError = null),
                   ),
+
                   const SizedBox(height: 16),
-                  AppTextField(
-                    controller: _sexeController,
-                    hint: 'Sexe',
-                    errorText: _sexeError,
-                    onChanged: (_) => setState(() => _sexeError = null),
+
+                  // ── Genre — taps to open bottom sheet ────────────────────
+                  GestureDetector(
+                    onTap: _pickGender,
+                    child: AbsorbPointer(
+                      child: AppTextField(
+                        controller:
+                            TextEditingController(text: _sexe ?? ''),
+                        hint: 'Sexe',
+                        errorText: _sexeError,
+                        suffixIcon: const Icon(
+                          Icons.arrow_drop_down,
+                          color: AppColors.primary,
+                          size: 24,
+                        ),
+                        onChanged: (_) {},
+                      ),
+                    ),
                   ),
+
                   const SizedBox(height: 130),
                   Align(
                     alignment: Alignment.center,

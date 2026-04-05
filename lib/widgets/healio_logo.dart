@@ -10,12 +10,12 @@ class HealioLogo extends StatelessWidget {
     return Column(
       children: [
         SvgPicture.asset('assets/images/logo.svg', height: 78, width: 56),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           'Healio',
           style: TextStyle(
-            color: AppColors.primary,
-            fontSize: 16,
+            color: const Color(0xFF1FAF87),
+            fontSize: 18,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
           ),

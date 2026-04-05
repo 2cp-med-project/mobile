@@ -116,6 +116,121 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     setState(() => _profileImagePath = picked.path);
   }
 
+  // ── Date of birth picker ────────────────────────────────────────────────
+  Future<void> _pickDOB() async {
+    final now = DateTime.now();
+    // Parse existing value if any (format: "06 / 10 / 2000")
+    DateTime initial = DateTime(now.year - 25, 1, 1);
+    try {
+      final parts = _dobCtrl.text.split('/').map((s) => int.parse(s.trim())).toList();
+      if (parts.length == 3) initial = DateTime(parts[2], parts[1], parts[0]);
+    } catch (_) {}
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(now.year - 1, 12, 31),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: Colors.white,
+            surface: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      setState(() {
+        _dobCtrl.text =
+            '${picked.day.toString().padLeft(2, '0')} / '
+            '${picked.month.toString().padLeft(2, '0')} / '
+            '${picked.year}';
+      });
+    }
+  }
+
+  // ── Gender picker (bottom sheet) ────────────────────────────────────────
+  void _pickGender() {
+    final options = ['Homme', 'Femme'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // handle bar
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Text('Genre',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark)),
+            const SizedBox(height: 14),
+            ...options.map((opt) {
+              final selected = _genreCtrl.text == opt;
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _genreCtrl.text = opt);
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : const Color(0xFFF4FBF8),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: selected
+                          ? AppColors.primary
+                          : Colors.transparent,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(children: [
+                    Text(opt,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.textDark)),
+                    const Spacer(),
+                    if (selected)
+                      const Icon(Icons.check_circle,
+                          color: AppColors.primary, size: 18),
+                  ]),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _save() async {
     setState(() => _saving = true);
     final prefs = await SharedPreferences.getInstance();
@@ -193,12 +308,27 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 _section(Icons.person_outline_rounded, 'Identité'),
                 _row2(_field('PRÉNOM', _prenomCtrl),
                       _field('NOM', _nomCtrl)),
-                _field('DATE DE NAISSANCE', _dobCtrl,
-                    prefix: Icons.calendar_today_outlined),
+                // DATE — taps to open native DatePicker
+                _tappableField(
+                  label: 'DATE DE NAISSANCE',
+                  controller: _dobCtrl,
+                  hint: 'JJ / MM / AAAA',
+                  icon: Icons.calendar_today_outlined,
+                  onTap: _pickDOB,
+                ),
                 _field('LIEU DE NAISSANCE', _lieuCtrl,
                     prefix: Icons.location_city_outlined),
-                _row2(_field('GENRE', _genreCtrl),
-                      _field('GROUPE SANGUIN', _bloodCtrl)),
+                _row2(
+                  // GENRE — taps to open bottom sheet picker
+                  _tappableField(
+                    label: 'GENRE',
+                    controller: _genreCtrl,
+                    hint: 'Sélectionner',
+                    icon: Icons.person_outline,
+                    onTap: _pickGender,
+                  ),
+                  _field('GROUPE SANGUIN', _bloodCtrl),
+                ),
 
                 _section(Icons.phone_outlined, 'Contact'),
                 _field('ADRESSE EMAIL', _emailCtrl,
@@ -489,6 +619,68 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
   Widget _row2(Widget a, Widget b) =>
       Row(children: [Expanded(child: a), const SizedBox(width: 10), Expanded(child: b)]);
+
+  // Tappable read-only field (calendar / picker)
+  Widget _tappableField({
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textGrey,
+                    letterSpacing: 0.4)),
+            const SizedBox(height: 5),
+            GestureDetector(
+              onTap: onTap,
+              child: AbsorbPointer(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.5)),
+                  ),
+                  child: TextField(
+                    controller: controller,
+                    style: const TextStyle(
+                        color: AppColors.textDark,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: hint,
+                      hintStyle: const TextStyle(
+                          color: AppColors.textGrey, fontSize: 13),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 13),
+                      border: InputBorder.none,
+                      prefixIcon:
+                          Icon(icon, color: AppColors.textGrey, size: 16),
+                      prefixIconConstraints:
+                          const BoxConstraints(minWidth: 36, minHeight: 0),
+                      suffixIcon: const Icon(Icons.arrow_drop_down,
+                          color: AppColors.border, size: 20),
+                      suffixIconConstraints:
+                          const BoxConstraints(minWidth: 36, minHeight: 0),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

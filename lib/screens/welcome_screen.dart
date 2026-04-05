@@ -1,6 +1,6 @@
 // screens/welcome_screen.dart
 // Shown after medical form is submitted — account created successfully
-// loads nom from local storage (StorageHelper)
+// loads prenom from local storage (StorageHelper)
 
 import 'package:flutter/material.dart';
 import '../widgets/healio_logo.dart';
@@ -18,18 +18,18 @@ class WelcomeScreen extends StatefulWidget {
 }
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
-  String _nom = '';
+  String _prenom = '';
 
   @override
   void initState() {
     super.initState();
-    _loadNom();
+    _loadPrenom();
   }
 
-  // loads nom from local storage
-  Future<void> _loadNom() async {
-    final nom = await StorageHelper.getNom();
-    setState(() => _nom = nom ?? '');
+  // loads prenom from local storage
+  Future<void> _loadPrenom() async {
+    final prenom = await StorageHelper.getPrenom();
+    setState(() => _prenom = prenom ?? '');
   }
 
   @override
@@ -97,7 +97,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
                         const SizedBox(height: 10),
 
-                        // welcome title — uses _nom from local storage
+                        // welcome title — uses _prenom from local storage
                         RichText(
                           text: TextSpan(
                             style: const TextStyle(
@@ -111,7 +111,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                 style: TextStyle(color: Colors.black87),
                               ),
                               TextSpan(
-                                text:  '$_nom...',
+                                text:  '$_prenom...',
                                 style: TextStyle(color: AppColors.primary),
                               ),
                             ],

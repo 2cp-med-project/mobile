@@ -600,9 +600,8 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
   final _noteCtrl   = TextEditingController();
 
   final List<String> _types = [
-    'Consultation',
-    'Contrôle',
-    'Urgence',
+    'Consultation générale',
+    'Consultation spécialisée',
     'Analyse en laboratoire',
   ];
   String? _selectedType;

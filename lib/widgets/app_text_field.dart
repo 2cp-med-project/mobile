@@ -1,19 +1,15 @@
 // widgets/app_text_field.dart
-// Reusable input field — matches Figma exactly:
-// normal: grey label inside field
-// focused: label floats on top border in primary color
-// error: red border + red label + warning icon + error text below
-
 import 'package:flutter/material.dart';
 import 'package:mobile/config/app_colors.dart';
 
-class AppTextField extends StatelessWidget {
+class AppTextField extends StatefulWidget {
   final TextEditingController controller;
   final String                 hint;
   final bool                   obscureText;
   final TextInputType          keyboardType;
   final String?                errorText;
   final ValueChanged<String>?  onChanged;
+  final Widget?                suffixIcon;
 
   const AppTextField({
     super.key,
@@ -23,70 +19,97 @@ class AppTextField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.errorText,
     this.onChanged,
+    this.suffixIcon,
   });
 
   @override
+  State<AppTextField> createState() => _AppTextFieldState();
+}
+
+class _AppTextFieldState extends State<AppTextField> {
+  final _focusNode = FocusNode();
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      setState(() => _focused = _focusNode.hasFocus);
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final hasError = errorText != null;
+    final hasError = widget.errorText != null;
+
+    // Label colour:
+    // - error   → red   (always)
+    // - focused → primary green
+    // - resting → grey  (even if field has text)
+    final labelColor = hasError
+        ? AppColors.error
+        : _focused
+            ? AppColors.primary
+            : AppColors.textGrey;
+
+    // Border colour:
+    // - error   → red
+    // - focused → primary green
+    // - resting → grey
+    final borderColor = hasError
+        ? AppColors.error
+        : _focused
+            ? AppColors.primary
+            : AppColors.border;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
-          controller:   controller,
-          obscureText:  obscureText,
-          keyboardType: keyboardType,
-          onChanged:    onChanged,
+          controller:   widget.controller,
+          focusNode:    _focusNode,
+          obscureText:  widget.obscureText,
+          keyboardType: widget.keyboardType,
+          onChanged:    widget.onChanged,
           style: const TextStyle(fontSize: 14, color: AppColors.textDark),
           decoration: InputDecoration(
-
-            // label sits inside as hint when not focused (grey)
-            // floats to top border when focused (primary green)
-            labelText: hint,
-            labelStyle: TextStyle(
-              color:    hasError ? AppColors.error : AppColors.textGrey,
-              fontSize: 13,
-            ),
-            // label turns primary green when floating (focused)
-            floatingLabelStyle: TextStyle(
-              color:    hasError ? AppColors.error : AppColors.primary,
-              fontSize: 12,
-            ),
+            labelText: widget.hint,
+            // Same color for both floating and non-floating states
+            // so it turns grey again when unfocused
+            labelStyle: TextStyle(color: labelColor, fontSize: 13),
+            floatingLabelStyle: TextStyle(color: labelColor, fontSize: 12),
             floatingLabelBehavior: FloatingLabelBehavior.auto,
 
-            // warning icon only on error
             suffixIcon: hasError
-                ? const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 20)
-                : null,
+                ? const Icon(Icons.warning_amber_rounded,
+                    color: AppColors.error, size: 20)
+                : widget.suffixIcon,
 
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
 
-            // normal state — grey border
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: hasError ? AppColors.error : AppColors.border,
-                width: 1.2,
-              ),
+              borderSide: BorderSide(color: borderColor, width: 1.2),
             ),
-            // focused state — teal border
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: hasError ? AppColors.error : AppColors.primary,
-                width: 1.5,
-              ),
+              borderSide: BorderSide(color: borderColor, width: 1.5),
             ),
           ),
         ),
-
-        // error message below field
         if (hasError) ...[
           const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.only(left: 4),
             child: Text(
-              errorText!,
+              widget.errorText!,
               style: const TextStyle(color: AppColors.error, fontSize: 11),
             ),
           ),
