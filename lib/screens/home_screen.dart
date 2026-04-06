@@ -136,144 +136,108 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           child: Stack(
             children: [
-              // Decorative circles
+              // ── Avatar — top right, no decorative circles ───────────
               Positioned(
-                right: 10, top: 10,
+                top: 16,
+                right: 16,
                 child: Container(
-                  width: 50, height: 50,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.15),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.7), width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-              Positioned(
-                right: 30, top: 40,
-                child: Container(
-                  width: 30, height: 30,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.1),
+                  child: ClipOval(
+                    child: _profileImagePath != null &&
+                            File(_profileImagePath!).existsSync()
+                        ? Image.file(File(_profileImagePath!),
+                            fit: BoxFit.cover)
+                        : Container(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            child: const Icon(Icons.person,
+                                color: Colors.white, size: 30),
+                          ),
                   ),
                 ),
               ),
 
+              // ── Main content — exactly as original ──────────────────
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: Row(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Text column ─────────────────────────────────────
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    Text(
+                      'Bonjour',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$_nom $_prenom ',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            'Bonjour',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '$_prenom $_nom',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Appointment reminder chip
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(12),
+                              shape: BoxShape.circle,
                             ),
-                            child: Row(
+                            child: const Icon(
+                              Icons.calendar_today_rounded,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.calendar_today_rounded,
+                                const Text(
+                                  'Prochain rendez-vous',
+                                  style: TextStyle(
+                                      color: Colors.white70, fontSize: 11),
+                                ),
+                                Text(
+                                  _nextAppointmentLabel(),
+                                  style: const TextStyle(
                                     color: Colors.white,
-                                    size: 14,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Prochain rendez-vous',
-                                        style: TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 11),
-                                      ),
-                                      Text(
-                                        _nextAppointmentLabel(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.arrow_forward_ios_rounded,
-                                    color: Colors.white70, size: 13),
                               ],
                             ),
                           ),
+                          const Icon(Icons.arrow_forward_ios_rounded,
+                              color: Colors.white70, size: 13),
                         ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 16),
-
-                    // ── Profile avatar ──────────────────────────────────
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            width: 2.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: _profileImagePath != null &&
-                                File(_profileImagePath!).existsSync()
-                            ? Image.file(
-                                File(_profileImagePath!),
-                                fit: BoxFit.cover,
-                              )
-                            : Container(
-                                color: Colors.white.withValues(alpha: 0.25),
-                                child: const Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                  size: 34,
-                                ),
-                              ),
                       ),
                     ),
                   ],
