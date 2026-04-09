@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:mobile/screens/dossier_screen.dart';
+import 'package:mobile/screens/health_card_screen.dart';
 import 'home_screen.dart';
 import 'demandes_screen.dart';
 import 'experiences_screen.dart';
@@ -9,6 +10,7 @@ import 'chatbot_screen.dart';
 import 'profile_screen.dart';
 import 'appointments_screen.dart';
 import 'dossier_screen.dart';
+import 'health_card_screen.dart';
 
 
 class MainScreen extends StatefulWidget {
@@ -25,7 +27,7 @@ class _MainScreenState extends State<MainScreen> {
     HomeScreen(),
     AppointmentsScreen(),
     ChatbotScreen(),
-    _PlaceholderScreen(label: 'Carte Santé'),
+    HealthCardScreen(),
     DossierScreen(),
     ProfileScreen(),
   ];
