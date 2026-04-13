@@ -9,6 +9,7 @@ import '../config/app_colors.dart';
 import '../config/storage_helper.dart';
 import 'chatbot_screen.dart';
 import 'appointments_screen.dart';
+import 'dossier_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -297,7 +298,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   subtitle: '2 nouveaux rapports',
                   iconWidth: 18,
                   iconHeight: 20,
-                  onTap: () {},
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const DossierScreen())),
                 ),
               ),
             ],
