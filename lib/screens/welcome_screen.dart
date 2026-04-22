@@ -165,8 +165,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         context,
                         MaterialPageRoute(builder: (_) => const MainScreen()),
                         (route) => false,
+                        
                       );
                     },
+                    
                   ),
 
                   const SizedBox(height: 40),

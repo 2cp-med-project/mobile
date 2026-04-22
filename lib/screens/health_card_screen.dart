@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_colors.dart';
+import '../widgets/logo.dart';
 
 class HealthCardScreen extends StatefulWidget {
   const HealthCardScreen({super.key});
@@ -107,8 +108,8 @@ class _HealthCardScreenState extends State<HealthCardScreen>
                           child: FittedBox(
                             fit: BoxFit.contain,
                             child: SizedBox(
-                              width: 500,
-                              height: 300,
+                              width: 600,
+                              height: 400,
                               child: isFront
                                   ? _CardFront(
                                       nom: '$_prenom $_nom',
@@ -142,7 +143,11 @@ class _HealthCardScreenState extends State<HealthCardScreen>
                 final back = _anim.value > 0.5;
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [_dot(!back), const SizedBox(width: 8), _dot(back)],
+                  children: [
+                    _dot(!back),
+                    const SizedBox(width: 10),
+                    _dot(back),
+                  ],
                 );
               },
             ),
@@ -155,8 +160,8 @@ class _HealthCardScreenState extends State<HealthCardScreen>
 
   Widget _dot(bool active) => AnimatedContainer(
     duration: const Duration(milliseconds: 300),
-    width: active ? 20 : 8,
-    height: 8,
+    width: active ? 14 : 8,
+    height: 6,
     decoration: BoxDecoration(
       color: active ? AppColors.primary : AppColors.primary.withOpacity(0.3),
       borderRadius: BorderRadius.circular(4),
@@ -204,40 +209,38 @@ class _CardFront extends StatelessWidget {
               bottom: 0,
               left: 0,
               right: 0,
-              child: _WaveDecoration(height: 60),
+              child: _WaveDecoration(height: 100),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              padding: const EdgeInsets.fromLTRB(30, 20, 0, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.local_hospital_outlined,
-                          color: AppColors.primary,
-                          size: 16,
+                      SizedBox(
+                        height: 70, //force proper alignment
+                        child: Center(
+                          child: Transform.scale(
+                            scale: 0.6,
+                            child: const Logo(),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+
+
                       const Text(
                         'Healio',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Expanded(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,

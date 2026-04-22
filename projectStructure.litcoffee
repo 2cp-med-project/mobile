@@ -188,8 +188,10 @@
 │   │   ├── home_screen.dart
 │   │   ├── main_screen.dart
 │   │   ├── medical_form_screen.dart
-│   │   ├── notification_service.dart
 │   │   ├── otp_screen.dart
+│   │   ├── personal_info_screen.dart
+│   │   ├── profile_screen.dart
+│   │   ├── security_screen.dart
 │   │   ├── sign_in_screen.dart
 │   │   ├── sign_up_screen.dart
 │   │   ├── sign_up_step2_screen.dart
@@ -200,16 +202,18 @@
 │   │   ├── splash_screen.dart
 │   │   └── welcome_screen.dart
 │   ├── services
-│   │   ├── appointment_service.dart
+│   │   ├── access.dart
 │   │   ├── auth_service.dart
-│   │   ├── chatbot_service.dart
-│   │   └── dossier_service.dart
+│   │   ├── notification_service.dart
+│   │   ├── record_service.dart
+│   │   └── user_service.dart
 │   ├── widgets
 │   │   ├── app_button.dart
 │   │   ├── app_loader.dart
 │   │   ├── app_text_field.dart
 │   │   ├── chat_bubble.dart
 │   │   ├── healio_logo.dart
+|   |   ├── logo.dart
 │   │   ├── signup_bubbles.dart
 │   │   └── top_bubbles.dart
 │   └── main.dart
