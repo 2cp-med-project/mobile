@@ -175,11 +175,11 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
                     );
                   }),
 
-                  if (_nameControllers.length == 4)
+                  if (_nameControllers.length == 2)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
-                        'Maximum 4 contacts atteint',
+                        'Maximum 2 contacts atteint',
                         style: TextStyle(
                             color: AppColors.textGrey, fontSize: 11),
                       ),

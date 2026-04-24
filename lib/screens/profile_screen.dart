@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_colors.dart';
 import '../config/storage_helper.dart';
-import '../widgets/top_bubbles.dart';
+import '../widgets/background.dart';
 import 'personal_info_screen.dart';
 import 'security_screen.dart';
 import 'sign_in_screen.dart';
@@ -113,69 +113,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4FBF8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildHeader(),
-              _buildStatsCard(),
-              const SizedBox(height: 24),
-              _buildEmergencySection(),
-              const SizedBox(height: 24),
-              _buildParametresSection(),
-              const SizedBox(height: 32),
-            ],
-          ),
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.transparent,
+    body: Stack(
+      children: [
+        // 🌍 FULL SCREEN BACKGROUND (your background.dart)
+        const Positioned.fill(
+          child: Background(),
         ),
-      ),
-    );
-  }
 
-  // ── Header ────────────────────────────────────────────────────────────────
-  Widget _buildHeader() {
-    return SizedBox(
-      height: 280,
-      child: Stack(
-        children: [
-          // Reuse the app's existing background widget
-          const Positioned.fill(child: TopBubbles()),
-
-          // Avatar + name sit on top
-          Positioned.fill(
+        SafeArea(
+          child: SingleChildScrollView(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                _buildHeader(),
+                const SizedBox(height: 10),
+                _buildStatsCard(),
                 const SizedBox(height: 24),
-                _avatar(),
-                const SizedBox(height: 12),
-                Text(
-                  '$_nom $_prenom'.trim().isEmpty
-                      ? 'Mon Profil'
-                      : '$_nom $_prenom',
-                  style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark),
-                ),
-                const SizedBox(height: 4),
-                if (_patientId.isNotEmpty)
-                  Text(
-                    _patientId,
-                    style: const TextStyle(
-                        fontSize: 13, color: AppColors.textGrey),
-                  ),
+                _buildEmergencySection(),
+                const SizedBox(height: 24),
+                _buildParametresSection(),
+                const SizedBox(height: 32),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  Widget _buildHeader() {
+  return SizedBox(
+    height: 280,
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const SizedBox(height: 24),
+
+        // Avatar stays
+        _avatar(),
+
+        const SizedBox(height: 12),
+
+        Text(
+          '$_nom $_prenom'.trim().isEmpty
+              ? 'Mon Profil'
+              : '$_nom $_prenom',
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
+          ),
+        ),
+
+        const SizedBox(height: 4),
+
+        if (_patientId.isNotEmpty)
+          Text(
+            _patientId,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textGrey,
+            ),
+          ),
+      ],
+    ),
+  );
+}
 
   Widget _avatar() {
     return Container(
@@ -242,8 +251,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
   Widget _statDivider() =>
-      Container(width: 1, height: 36, color: const Color(0xFFF4FBF8));
-
+    Container(width: 1, height: 36, color: Colors.transparent);
+    
   // ── Emergency contacts ────────────────────────────────────────────────────
   Widget _buildEmergencySection() {
     return Padding(
