@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_colors.dart';
 import '../config/storage_helper.dart';
+import '../config/validators.dart';
 import '../services/patient_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,9 +26,9 @@ import '../services/patient_service.dart';
 //  'phone'               → StorageHelper  (step 3)
 //  'email'               → StorageHelper  (step 3)
 //  'patient_id'          → step 4
-//  'emergency_contacts'  → step 4  JSON: [{name, phone}, ...]
+//  'emergency_contacts'  → step 4  JSON: [{name, phone}]  ← MAX 1
 //  'profile_image_path'  → this screen  (gallery pick)
-//  'groupe_sanguin'      → this screen  (not in sign-up)
+//  'groupe_sanguin'      → this screen
 //  'allergies'           → this screen
 //  'maladies_chroniques' → this screen
 //  'medicaments'         → this screen
@@ -54,13 +55,17 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   final _chronicCtrl   = TextEditingController();
   final _medsCtrl      = TextEditingController();
 
-  // Emergency contacts loaded dynamically from JSON stored in step 4
-  List<Map<String, TextEditingController>> _ecControllers = [];
+  // MAX 1 emergency contact — null means none exists yet
+  Map<String, TextEditingController>? _ecEntry;
+
+  // Validation errors for the emergency contact fields
+  String? _ecNameError;
+  String? _ecPhoneError;
 
   String? _profileImagePath;
-  bool _saving       = false;
-  bool _showSuccess  = false;
-  bool _newImagePicked = false; // tracks whether user picked a new photo
+  bool _saving         = false;
+  bool _showSuccess    = false;
+  bool _newImagePicked = false;
 
   @override
   void initState() {
@@ -74,39 +79,33 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // StorageHelper keys
-    _prenomCtrl.text = prefs.getString('prenom') ?? '';
-    _nomCtrl.text    = prefs.getString('nom')    ?? '';
-    _phoneCtrl.text  = prefs.getString('phone')  ?? '';
-    _emailCtrl.text  = prefs.getString('email')  ?? '';
+    _prenomCtrl.text  = prefs.getString('prenom') ?? '';
+    _nomCtrl.text     = prefs.getString('nom')    ?? '';
+    _phoneCtrl.text   = prefs.getString('phone')  ?? '';
+    _emailCtrl.text   = prefs.getString('email')  ?? '';
 
-    // Step 2 keys
-    _dobCtrl.text   = prefs.getString('date_naissance') ?? '';
-    _lieuCtrl.text  = prefs.getString('lieu_naissance') ?? '';
-    _genreCtrl.text = prefs.getString('genre')          ?? '';
+    _dobCtrl.text     = prefs.getString('date_naissance') ?? '';
+    _lieuCtrl.text    = prefs.getString('lieu_naissance') ?? '';
+    _genreCtrl.text   = prefs.getString('genre')          ?? '';
 
-    // Step 3 key
     _adresseCtrl.text = prefs.getString('adresse') ?? '';
 
-    // Medical — only set from this screen
     _bloodCtrl.text     = prefs.getString('groupe_sanguin')      ?? '';
     _allergiesCtrl.text = prefs.getString('allergies')           ?? '';
     _chronicCtrl.text   = prefs.getString('maladies_chroniques') ?? '';
     _medsCtrl.text      = prefs.getString('medicaments')         ?? '';
 
-    // Step 4 emergency contacts JSON: [{name, phone}, ...]
+    // Load at most 1 emergency contact
     final raw = prefs.getString('emergency_contacts');
     if (raw != null) {
       final list = List<Map<String, dynamic>>.from(jsonDecode(raw));
-      _ecControllers = list.map((e) => {
-        'name':  TextEditingController(text: e['name']  as String? ?? ''),
-        'phone': TextEditingController(text: e['phone'] as String? ?? ''),
-      }).toList();
-    }
-    if (_ecControllers.isEmpty) {
-      _ecControllers = [
-        {'name': TextEditingController(), 'phone': TextEditingController()},
-      ];
+      if (list.isNotEmpty) {
+        final e = list.first;
+        _ecEntry = {
+          'name':  TextEditingController(text: e['name']  as String? ?? ''),
+          'phone': TextEditingController(text: e['phone'] as String? ?? ''),
+        };
+      }
     }
 
     _profileImagePath = prefs.getString('profile_image_path');
@@ -223,9 +222,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                         : const Color(0xFFF4FBF8),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: selected
-                          ? AppColors.primary
-                          : Colors.transparent,
+                      color: selected ? AppColors.primary : Colors.transparent,
                       width: 1.5,
                     ),
                   ),
@@ -255,19 +252,45 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  //  SAVE  (UI from doc1 + full backend logic from doc2)
+  //  EMERGENCY CONTACT VALIDATION
+  //  Returns true if valid (or no contact added), false if errors found.
+  // ─────────────────────────────────────────────────────────────────────────
+  bool _validateEcEntry() {
+    if (_ecEntry == null) return true; // nothing to validate
+
+    final name  = _ecEntry!['name']!.text.trim();
+    final phone = _ecEntry!['phone']!.text.trim();
+
+    final nameErr  = name.isEmpty  ? 'Le nom est requis' : null;
+    final phoneErr = phone.isEmpty
+        ? 'Le numéro est requis'
+        : Validators.phone(phone); // reuses your existing phone validator
+
+    setState(() {
+      _ecNameError  = nameErr;
+      _ecPhoneError = phoneErr;
+    });
+
+    return nameErr == null && phoneErr == null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //  SAVE
   // ─────────────────────────────────────────────────────────────────────────
   Future<void> _save() async {
+    // Validate emergency contact before proceeding
+    if (!_validateEcEntry()) return;
+
     setState(() => _saving = true);
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. Upload avatar if a new image was picked
+    // 1. Upload avatar if new image was picked
     if (_newImagePicked && _profileImagePath != null) {
       await PatientService.uploadAvatar(_profileImagePath!);
       _newImagePicked = false;
     }
 
-    // 2. Save to StorageHelper (nom, prenom, phone, email)
+    // 2. Save StorageHelper fields
     await StorageHelper.saveUser(
       nom:    _nomCtrl.text.trim(),
       prenom: _prenomCtrl.text.trim(),
@@ -275,7 +298,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       email:  _emailCtrl.text.trim(),
     );
 
-    // 3. Save all other fields to SharedPreferences
+    // 3. Save remaining fields
     await Future.wait([
       prefs.setString('date_naissance',      _dobCtrl.text.trim()),
       prefs.setString('lieu_naissance',      _lieuCtrl.text.trim()),
@@ -287,14 +310,18 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       prefs.setString('medicaments',         _medsCtrl.text.trim()),
     ]);
 
-    // 4. Emergency contacts
-    final contacts = _ecControllers.map((e) => {
-      'name':  e['name']!.text.trim(),
-      'phone': e['phone']!.text.trim(),
-    }).toList();
+    // 4. Emergency contact — max 1, stored as single-item list for API compat
+    final contacts = _ecEntry != null
+        ? [
+            {
+              'name':  _ecEntry!['name']!.text.trim(),
+              'phone': _ecEntry!['phone']!.text.trim(),
+            }
+          ]
+        : <Map<String, String>>[];
     await prefs.setString('emergency_contacts', jsonEncode(contacts));
 
-    // 5. Backend sync via PatientService
+    // 5. Backend sync
     final err = await PatientService.updateProfile({
       'firstName':         _prenomCtrl.text.trim(),
       'lastName':          _nomCtrl.text.trim(),
@@ -311,14 +338,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       'emergencyContacts': contacts,
     });
 
-    if (err != null) {
-      debugPrint('❌ API error: $err');
-    }
+    if (err != null) debugPrint('❌ API error: $err');
 
-    setState(() {
-      _saving      = false;
-      _showSuccess = true;
-    });
+    setState(() { _saving = false; _showSuccess = true; });
     await Future.delayed(const Duration(seconds: 3));
     if (mounted) setState(() => _showSuccess = false);
   }
@@ -333,10 +355,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       _emailCtrl, _phoneCtrl, _adresseCtrl, _allergiesCtrl, _chronicCtrl,
       _medsCtrl,
     ]) c.dispose();
-    for (final ec in _ecControllers) {
-      ec['name']!.dispose();
-      ec['phone']!.dispose();
-    }
+    _ecEntry?['name']?.dispose();
+    _ecEntry?['phone']?.dispose();
     super.dispose();
   }
 
@@ -358,12 +378,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 _avatarPicker(),
                 const SizedBox(height: 28),
 
-                // ── Identité ─────────────────────────────────────────────
+                // ── Identité ───────────────────────────────────────────────
                 _section(Icons.person_outline_rounded, 'Identité'),
-                _row2(
-                  _field('PRÉNOM', _prenomCtrl),
-                  _field('NOM', _nomCtrl),
-                ),
+                _row2(_field('PRÉNOM', _prenomCtrl), _field('NOM', _nomCtrl)),
                 _tappableField(
                   label: 'DATE DE NAISSANCE',
                   controller: _dobCtrl,
@@ -384,103 +401,106 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   _field('GROUPE SANGUIN', _bloodCtrl),
                 ),
 
-                // ── Contact ──────────────────────────────────────────────
+                // ── Contact ────────────────────────────────────────────────
                 _section(Icons.phone_outlined, 'Contact'),
                 _field('ADRESSE EMAIL', _emailCtrl,
                     prefix: Icons.email_outlined),
                 _field('NUMÉRO DE TÉLÉPHONE', _phoneCtrl,
                     prefix: Icons.phone_outlined),
-                _field('ADRESSE', _adresseCtrl,
-                    prefix: Icons.home_outlined),
+                _field('ADRESSE', _adresseCtrl, prefix: Icons.home_outlined),
 
-                // ── Contacts d'urgence ────────────────────────────────────
-                _section(Icons.emergency_outlined, 'Contacts d\'urgence'),
-                ..._ecControllers.asMap().entries.map((entry) {
-                  final i  = entry.key;
-                  final ec = entry.value;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4, top: 4),
-                        child: Row(
-                          children: [
-                            Text(
-                              'Contact ${i + 1}',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textGrey,
-                              ),
+                // ── Contact d'urgence (MAX 1) ──────────────────────────────
+                _section(Icons.emergency_outlined, 'Contact d\'urgence'),
+
+                if (_ecEntry != null) ...[
+                  // Contact exists → show fields + delete button
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4, top: 4),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Contact d\'urgence',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textGrey,
+                          ),
+                        ),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () => setState(() {
+                            _ecEntry!['name']!.dispose();
+                            _ecEntry!['phone']!.dispose();
+                            _ecEntry      = null;
+                            _ecNameError  = null;
+                            _ecPhoneError = null;
+                          }),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            const Spacer(),
-                            if (_ecControllers.length > 1)
-                              GestureDetector(
-                                onTap: () => setState(() {
-                                  ec['name']!.dispose();
-                                  ec['phone']!.dispose();
-                                  _ecControllers.removeAt(i);
-                                }),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.error
-                                        .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.remove_circle_outline,
-                                          color: AppColors.error, size: 12),
-                                      SizedBox(width: 3),
-                                      Text(
-                                        'Supprimer',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: AppColors.error,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.remove_circle_outline,
+                                    color: AppColors.error, size: 12),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Supprimer',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              ),
-                          ],
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                      _row2(
-                        _field('NOM', ec['name']!),
-                        _field('TÉLÉPHONE', ec['phone']!),
-                      ),
-                    ],
-                  );
-                }),
+                      ],
+                    ),
+                  ),
 
-                // Add contact button (max 4)
-                if (_ecControllers.length < 4)
+                  // Name field
+                  _field('NOM', _ecEntry!['name']!,
+                      errorOverride: _ecNameError,
+                      onChangedOverride: (_) =>
+                          setState(() => _ecNameError = null)),
+
+                  // Phone field with validation error display
+                  _fieldWithError(
+                    label: 'TÉLÉPHONE',
+                    controller: _ecEntry!['phone']!,
+                    errorText: _ecPhoneError,
+                    prefix: Icons.phone_outlined,
+                    onChanged: (_) => setState(() => _ecPhoneError = null),
+                  ),
+                ] else ...[
+                  // No contact → show add button
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: GestureDetector(
                       onTap: () => setState(() {
-                        _ecControllers.add({
+                        _ecEntry = {
                           'name':  TextEditingController(),
                           'phone': TextEditingController(),
-                        });
+                        };
+                        _ecNameError  = null;
+                        _ecPhoneError = null;
                       }),
                       child: Container(
                         width: double.infinity,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: AppColors.primary.withValues(alpha: 0.4),
                             width: 1.5,
                           ),
                           borderRadius: BorderRadius.circular(12),
-                          color:
-                              AppColors.primary.withValues(alpha: 0.04),
+                          color: AppColors.primary.withValues(alpha: 0.04),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -501,10 +521,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                       ),
                     ),
                   ),
+                ],
 
-                // ── Informations médicales ────────────────────────────────
-                _section(
-                    Icons.monitor_heart_outlined, 'Informations médicales'),
+                // ── Informations médicales ─────────────────────────────────
+                _section(Icons.monitor_heart_outlined,
+                    'Informations médicales'),
                 _field('ALLERGIES', _allergiesCtrl),
                 _field('MALADIES CHRONIQUES', _chronicCtrl),
                 _field('MÉDICAMENTS ACTUELS', _medsCtrl),
@@ -512,7 +533,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             ),
           ),
 
-          // ── Success toast ───────────────────────────────────────────────
+          // ── Success toast ──────────────────────────────────────────────
           AnimatedPositioned(
             duration: const Duration(milliseconds: 350),
             curve: Curves.easeOut,
@@ -520,8 +541,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             left: 20,
             right: 20,
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 14),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(14),
@@ -551,11 +572,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             ),
           ),
 
-          // ── Save button ─────────────────────────────────────────────────
+          // ── Save button ────────────────────────────────────────────────
           Positioned(
-            bottom: 20,
-            left: 20,
-            right: 20,
+            bottom: 20, left: 20, right: 20,
             child: ElevatedButton.icon(
               onPressed: _saving ? null : _save,
               style: ElevatedButton.styleFrom(
@@ -569,8 +588,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               ),
               icon: _saving
                   ? const SizedBox(
-                      width: 18,
-                      height: 18,
+                      width: 18, height: 18,
                       child: CircularProgressIndicator(
                           color: Colors.white, strokeWidth: 2),
                     )
@@ -631,12 +649,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             Stack(
               children: [
                 Container(
-                  width: 100,
-                  height: 100,
+                  width: 100, height: 100,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border:
-                        Border.all(color: AppColors.primary, width: 3),
+                    border: Border.all(color: AppColors.primary, width: 3),
                     boxShadow: [
                       BoxShadow(
                         color: AppColors.primary.withValues(alpha: 0.2),
@@ -658,8 +674,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   ),
                 ),
                 Positioned(
-                  bottom: 0,
-                  right: 0,
+                  bottom: 0, right: 0,
                   child: Container(
                     padding: const EdgeInsets.all(7),
                     decoration: const BoxDecoration(
@@ -675,8 +690,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             const SizedBox(height: 8),
             const Text(
               'Appuyez pour changer de photo',
-              style:
-                  TextStyle(color: AppColors.textGrey, fontSize: 12),
+              style: TextStyle(color: AppColors.textGrey, fontSize: 12),
             ),
           ],
         ),
@@ -705,10 +719,13 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         ]),
       );
 
+  // Standard field — optionally override error/onChanged for ec fields
   Widget _field(
     String label,
     TextEditingController ctrl, {
     IconData? prefix,
+    String? errorOverride,
+    ValueChanged<String>? onChangedOverride,
   }) =>
       Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -725,7 +742,46 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               ),
             ),
             const SizedBox(height: 5),
-            _GreenFocusField(controller: ctrl, prefixIcon: prefix),
+            _GreenFocusField(
+              controller: ctrl,
+              prefixIcon: prefix,
+              errorText: errorOverride,
+              onChanged: onChangedOverride,
+            ),
+          ],
+        ),
+      );
+
+  // Field variant that always shows an error banner below it
+  Widget _fieldWithError({
+    required String label,
+    required TextEditingController controller,
+    required String? errorText,
+    IconData? prefix,
+    ValueChanged<String>? onChanged,
+  }) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textGrey,
+                letterSpacing: 0.4,
+              ),
+            ),
+            const SizedBox(height: 5),
+            _GreenFocusField(
+              controller: controller,
+              prefixIcon: prefix,
+              errorText: errorText,
+              onChanged: onChanged,
+              keyboardType: TextInputType.phone,
+            ),
           ],
         ),
       );
@@ -791,12 +847,12 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                       border: InputBorder.none,
                       prefixIcon:
                           Icon(icon, color: AppColors.textGrey, size: 16),
-                      prefixIconConstraints: const BoxConstraints(
-                          minWidth: 36, minHeight: 0),
+                      prefixIconConstraints:
+                          const BoxConstraints(minWidth: 36, minHeight: 0),
                       suffixIcon: const Icon(Icons.arrow_drop_down,
                           color: AppColors.border, size: 20),
-                      suffixIconConstraints: const BoxConstraints(
-                          minWidth: 36, minHeight: 0),
+                      suffixIconConstraints:
+                          const BoxConstraints(minWidth: 36, minHeight: 0),
                     ),
                   ),
                 ),
@@ -809,11 +865,22 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GREEN FOCUS FIELD
+//  Extended to support errorText, onChanged, and keyboardType
 // ─────────────────────────────────────────────────────────────────────────────
 class _GreenFocusField extends StatefulWidget {
   final TextEditingController controller;
   final IconData? prefixIcon;
-  const _GreenFocusField({required this.controller, this.prefixIcon});
+  final String? errorText;
+  final ValueChanged<String>? onChanged;
+  final TextInputType? keyboardType;
+
+  const _GreenFocusField({
+    required this.controller,
+    this.prefixIcon,
+    this.errorText,
+    this.onChanged,
+    this.keyboardType,
+  });
 
   @override
   State<_GreenFocusField> createState() => _GreenFocusFieldState();
@@ -824,47 +891,81 @@ class _GreenFocusFieldState extends State<_GreenFocusField> {
 
   @override
   Widget build(BuildContext context) {
+    final hasError = widget.errorText != null;
+
     return Focus(
       onFocusChange: (f) => setState(() => _focused = f),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          color: _focused
-              ? AppColors.primary.withValues(alpha: 0.07)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: _focused
-                ? AppColors.primary
-                : AppColors.border.withValues(alpha: 0.5),
-            width: _focused ? 1.5 : 1.0,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              color: hasError
+                  ? AppColors.error.withValues(alpha: 0.05)
+                  : _focused
+                      ? AppColors.primary.withValues(alpha: 0.07)
+                      : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: hasError
+                    ? AppColors.error.withValues(alpha: 0.6)
+                    : _focused
+                        ? AppColors.primary
+                        : AppColors.border.withValues(alpha: 0.5),
+                width: (hasError || _focused) ? 1.5 : 1.0,
+              ),
+            ),
+            child: TextField(
+              controller: widget.controller,
+              keyboardType: widget.keyboardType,
+              onChanged: widget.onChanged,
+              style: const TextStyle(
+                color: AppColors.textDark,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                border: InputBorder.none,
+                prefixIcon: widget.prefixIcon != null
+                    ? Icon(widget.prefixIcon,
+                        color: hasError
+                            ? AppColors.error.withValues(alpha: 0.7)
+                            : AppColors.textGrey,
+                        size: 16)
+                    : null,
+                prefixIconConstraints:
+                    const BoxConstraints(minWidth: 36, minHeight: 0),
+                suffixIcon: hasError
+                    ? const Icon(Icons.error_outline,
+                        color: AppColors.error, size: 16)
+                    : const Icon(Icons.edit_outlined,
+                        color: AppColors.border, size: 15),
+                suffixIconConstraints:
+                    const BoxConstraints(minWidth: 36, minHeight: 0),
+              ),
+            ),
           ),
-        ),
-        child: TextField(
-          controller: widget.controller,
-          style: const TextStyle(
-            color: AppColors.textDark,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          decoration: InputDecoration(
-            isDense: true,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            border: InputBorder.none,
-            prefixIcon: widget.prefixIcon != null
-                ? Icon(widget.prefixIcon,
-                    color: AppColors.textGrey, size: 16)
-                : null,
-            prefixIconConstraints:
-                const BoxConstraints(minWidth: 36, minHeight: 0),
-            suffixIcon: const Icon(Icons.edit_outlined,
-                color: AppColors.border, size: 15),
-            suffixIconConstraints:
-                const BoxConstraints(minWidth: 36, minHeight: 0),
-          ),
-        ),
+          // Inline error message
+          if (hasError) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Text(
+                widget.errorText!,
+                style: const TextStyle(
+                  color: AppColors.error,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

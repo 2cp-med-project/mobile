@@ -1,13 +1,18 @@
-// screens/splash_screen.dart — INTEGRATED
-// Auth gate: token exists → MainScreen, else → SignInScreen
+// screens/splash_screen.dart
+// Auth gate: token → check medical form → route correctly
+// Flow:
+//   No token         → SignInScreen
+//   Token + no form  → MedicalFormScreen (can't skip)
+//   Token + form     → MainScreen
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/storage_helper.dart';
-import '../services/user_service.dart';
-import '../widgets/logo.dart';
+import '../widgets/healio_logo.dart';
 import '../config/app_colors.dart';
 import 'main_screen.dart';
 import 'sign_in_screen.dart';
+import 'medical_form_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,21 +24,35 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAuth();
+    _route();
   }
 
-  Future<void> _checkAuth() async {
-    await Future.delayed(const Duration(milliseconds: 1000));
+  Future<void> _route() async {
+    await Future.delayed(const Duration(milliseconds: 1200));
+
     final loggedIn = await StorageHelper.isLoggedIn();
-    if (loggedIn) {
-      // Background refresh — doesn't block navigation
-      UserService.getMe();
-      if (mounted) Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => const MainScreen()));
-    } else {
-      if (mounted) Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => const SignInScreen()));
+
+    if (!loggedIn) {
+      _go(const SignInScreen());
+      return;
     }
+
+    // Check if medical form was completed
+    final prefs     = await SharedPreferences.getInstance();
+    final formDone  = prefs.getBool('medical_form_completed') ?? false;
+
+    if (!formDone) {
+      // Force medical form — no back button leads to home
+      _go(const MedicalFormScreen());
+    } else {
+      _go(const MainScreen());
+    }
+  }
+
+  void _go(Widget screen) {
+    if (!mounted) return;
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (_) => screen));
   }
 
   @override
@@ -44,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            Logo(),
+            HealioLogo(),
             SizedBox(height: 16),
             Text('Healio',
                 style: TextStyle(
@@ -52,7 +71,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                     letterSpacing: -0.5)),
-            SizedBox(height: 52),
+            SizedBox(height: 48),
             CircularProgressIndicator(
                 color: AppColors.primary, strokeWidth: 2),
           ],

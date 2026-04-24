@@ -19,11 +19,18 @@ class SignUpStep5Screen extends StatefulWidget {
 class _SignUpStep5ScreenState extends State<SignUpStep5Screen> {
   final _pwCtrl      = TextEditingController();
   final _confirmCtrl = TextEditingController();
+
+  bool    _pwVisible      = false; // ← eye toggle for password
+  bool    _confirmVisible = false; // ← eye toggle for confirm
   String? _pwError;
   String? _confirmError;
 
   @override
-  void dispose() { _pwCtrl.dispose(); _confirmCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _pwCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _onSuivant() async {
     setState(() {
@@ -32,73 +39,114 @@ class _SignUpStep5ScreenState extends State<SignUpStep5Screen> {
     });
     if (_pwError != null || _confirmError != null) return;
 
-    // Save temp password — AuthService.register() will read & delete it
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('_temp_password', _pwCtrl.text);
 
     if (!mounted) return;
-    // Navigate to OTP step — registration happens inside step 6
-    Navigator.push(context,
-        MaterialPageRoute(
-            builder: (_) => const SignUpStep6Screen(isEmail: false)));
-    // isEmail: false → OTP sent via phone (your API uses phone for OTP)
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => const SignUpStep6Screen(isEmail: false)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEEFBF7),
-      body: Stack(children: [
-        const SignupBubbles(),
-        SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 45),
-                const HealioLogo(),
-                const SizedBox(height: 40),
-                const Text('Pour la sécurité',
+      body: Stack(
+        children: [
+          const SignupBubbles(),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 45),
+                  const HealioLogo(),
+                  const SizedBox(height: 40),
+
+                  const Text(
+                    'Pour la sécurité',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        color: Colors.black87,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700)),
-                const SizedBox(height: 10),
-                const Text('Créez un mot de passe robuste',
+                      color: Colors.black87,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Créez un mot de passe robuste',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        color: Colors.black54, fontSize: 12, height: 1.5)),
-                const SizedBox(height: 40),
-                AppTextField(
-                  controller: _pwCtrl,
-                  hint: 'Créer un mot de passe',
-                  obscureText: true,
-                  errorText: _pwError,
-                  onChanged: (_) => setState(() => _pwError = null),
-                ),
-                const SizedBox(height: 16),
-                AppTextField(
-                  controller: _confirmCtrl,
-                  hint: 'Confirmer',
-                  obscureText: true,
-                  errorText: _confirmError,
-                  onChanged: (_) => setState(() => _confirmError = null),
-                ),
-                const SizedBox(height: 160),
-                SizedBox(
-                  width: 140,
-                  child: AppButton(
+                      color: Colors.black54,
+                      fontSize: 12,
+                      height: 1.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // ── Password field with eye toggle ──────────────────────
+                  AppTextField(
+                    controller: _pwCtrl,
+                    hint: 'Créer un mot de passe',
+                    obscureText: !_pwVisible,
+                    errorText: _pwError,
+                    onChanged: (_) => setState(() => _pwError = null),
+                    suffixIcon: GestureDetector(
+                      onTap: () =>
+                          setState(() => _pwVisible = !_pwVisible),
+                      child: Icon(
+                        _pwVisible
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: Colors.black38,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Confirm field with eye toggle ───────────────────────
+                  AppTextField(
+                    controller: _confirmCtrl,
+                    hint: 'Confirmer',
+                    obscureText: !_confirmVisible,
+                    errorText: _confirmError,
+                    onChanged: (_) => setState(() => _confirmError = null),
+                    suffixIcon: GestureDetector(
+                      onTap: () =>
+                          setState(() => _confirmVisible = !_confirmVisible),
+                      child: Icon(
+                        _confirmVisible
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: Colors.black38,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 160),
+
+                  SizedBox(
+                    width: 140,
+                    child: AppButton(
                       label: 'Suivant',
                       borderRadius: 31,
-                      onPressed: _onSuivant),
-                ),
-              ],
+                      onPressed: _onSuivant,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }

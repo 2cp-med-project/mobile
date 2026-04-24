@@ -23,10 +23,11 @@ class _SignInScreenState extends State<SignInScreen> {
   final _phoneCtrl    = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
-  bool    _isLoading    = false;
+  bool    _isLoading       = false;
+  bool    _passwordVisible = false; // ← eye toggle
   String? _phoneError;
   String? _passwordError;
-  String? _serverError;   // ← shows backend / network errors
+  String? _serverError;
 
   @override
   void dispose() {
@@ -36,14 +37,12 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _onLoginPressed() async {
-    // Clear previous errors
     setState(() {
       _phoneError    = null;
       _passwordError = null;
       _serverError   = null;
     });
 
-    // Local validation first
     setState(() {
       _phoneError    = Validators.phone(_phoneCtrl.text);
       _passwordError = Validators.password(_passwordCtrl.text);
@@ -52,13 +51,11 @@ class _SignInScreenState extends State<SignInScreen> {
 
     setState(() => _isLoading = true);
 
-    // ── Backend call ────────────────────────────────────────────────
     final error = await AuthService.login(
       phone:    _phoneCtrl.text.trim(),
       password: _passwordCtrl.text,
       role:     'patient',
     );
-    // ────────────────────────────────────────────────────────────────
 
     setState(() => _isLoading = false);
 
@@ -80,7 +77,6 @@ class _SignInScreenState extends State<SignInScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // ── Your original background ──────────────────────────────
           const TopBubbles(),
 
           SafeArea(
@@ -112,7 +108,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 28),
 
-                  // Phone field
+                  // ── Phone field ───────────────────────────────────────
                   AppTextField(
                     controller: _phoneCtrl,
                     hint: 'Entrez votre numéro de téléphone',
@@ -126,19 +122,30 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Password field
+                  // ── Password field with eye toggle ────────────────────
                   AppTextField(
                     controller: _passwordCtrl,
                     hint: 'Entrez votre mot de passe',
-                    obscureText: true,
+                    obscureText: !_passwordVisible,
                     errorText: _passwordError,
                     onChanged: (_) => setState(() {
                       _passwordError = null;
                       _serverError   = null;
                     }),
+                    suffixIcon: GestureDetector(
+                      onTap: () =>
+                          setState(() => _passwordVisible = !_passwordVisible),
+                      child: Icon(
+                        _passwordVisible
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: AppColors.primary.withValues(alpha: 0.5),
+                        size: 20,
+                      ),
+                    ),
                   ),
 
-                  // ── Server / network error ────────────────────────
+                  // ── Server / network error ────────────────────────────
                   if (_serverError != null) ...[
                     const SizedBox(height: 12),
                     Container(
@@ -173,7 +180,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   const SizedBox(height: 28),
 
-                  // ── Your original AppButton (keeps isLoading) ─────
                   AppButton(
                     label: 'Se connecter',
                     isLoading: _isLoading,
