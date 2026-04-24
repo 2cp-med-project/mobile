@@ -8,7 +8,10 @@ import 'storage_helper.dart';
 
 class ApiClient {
 
- static const baseUrl = 'http://192.168.30.54:5000/api'; 
+ //static const baseUrl = 'http://192.168.30.54:5000/api'; 
+  static const baseUrl = 'http://10.74.101.26:5000/api'; 
+
+ 
 
   // Increased timeout — 30s for slow local networks
   static const Duration _timeout = Duration(seconds: 30);

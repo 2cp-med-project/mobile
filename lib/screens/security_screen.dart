@@ -94,51 +94,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     if (mounted) setState(() => _pwSuccess = false);
   }
 
-  Future<void> _deleteAccount() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.5),
-      builder: (_) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Supprimer le compte',
-            style: TextStyle(
-                fontWeight: FontWeight.w700, color: AppColors.textDark)),
-        content: const Text(
-          'Cette action est irréversible. Toutes vos données seront supprimées définitivement.',
-          style: TextStyle(color: AppColors.textGrey, height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler',
-                style: TextStyle(color: AppColors.textGrey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      // BACKEND TODO: DELETE /api/patient/account
-      await StorageHelper.clear();
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const SignInScreen()),
-        (route) => false,
-      );
-    }
-  }
-
+  
   @override
   void dispose() {
     _currentPwCtrl.dispose();
@@ -340,19 +296,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 onTap: () {
                   // BACKEND TODO: open webview with terms URL
                 },
-              ),
-            ]),
-
-            const SizedBox(height: 24),
-
-            // ── Danger zone ──
-            _sectionLabel('⚠️  Zone dangereuse'),
-            _card(children: [
-              _actionTile(
-                icon: Icons.delete_forever_outlined,
-                label: 'Supprimer mon compte',
-                isDestructive: true,
-                onTap: _deleteAccount,
               ),
             ]),
 

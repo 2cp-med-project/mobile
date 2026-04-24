@@ -1,7 +1,8 @@
 // screens/personal_info_screen.dart
 // Editable personal info — reads from SharedPreferences keys written during sign-up
 // Save writes back to the same keys so profile_screen always stays in sync
-// BACKEND TODO: replace _save() body with PATCH /api/patient/profile
+// BACKEND: PATCH /api/patient/profile via PatientService.updateProfile
+// BACKEND: avatar upload via PatientService.uploadAvatar
 
 import 'dart:convert';
 import 'dart:io';
@@ -10,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_colors.dart';
 import '../config/storage_helper.dart';
+import '../services/patient_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  KEY REFERENCE  (single source of truth — matches sign_up_step*.dart)
@@ -39,25 +41,26 @@ class PersonalInfoScreen extends StatefulWidget {
 }
 
 class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
-  final _prenomCtrl     = TextEditingController();
-  final _nomCtrl        = TextEditingController();
-  final _dobCtrl        = TextEditingController();
-  final _lieuCtrl       = TextEditingController();
-  final _genreCtrl      = TextEditingController();
-  final _bloodCtrl      = TextEditingController();
-  final _emailCtrl      = TextEditingController();
-  final _phoneCtrl      = TextEditingController();
-  final _adresseCtrl    = TextEditingController();
-  final _allergiesCtrl  = TextEditingController();
-  final _chronicCtrl    = TextEditingController();
-  final _medsCtrl       = TextEditingController();
+  final _prenomCtrl    = TextEditingController();
+  final _nomCtrl       = TextEditingController();
+  final _dobCtrl       = TextEditingController();
+  final _lieuCtrl      = TextEditingController();
+  final _genreCtrl     = TextEditingController();
+  final _bloodCtrl     = TextEditingController();
+  final _emailCtrl     = TextEditingController();
+  final _phoneCtrl     = TextEditingController();
+  final _adresseCtrl   = TextEditingController();
+  final _allergiesCtrl = TextEditingController();
+  final _chronicCtrl   = TextEditingController();
+  final _medsCtrl      = TextEditingController();
 
   // Emergency contacts loaded dynamically from JSON stored in step 4
   List<Map<String, TextEditingController>> _ecControllers = [];
 
   String? _profileImagePath;
-  bool _saving      = false;
-  bool _showSuccess = false;
+  bool _saving       = false;
+  bool _showSuccess  = false;
+  bool _newImagePicked = false; // tracks whether user picked a new photo
 
   @override
   void initState() {
@@ -65,6 +68,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     _load();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  //  LOAD
+  // ─────────────────────────────────────────────────────────────────────────
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -83,10 +89,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     _adresseCtrl.text = prefs.getString('adresse') ?? '';
 
     // Medical — only set from this screen
-    _bloodCtrl.text    = prefs.getString('groupe_sanguin')       ?? '';
-    _allergiesCtrl.text = prefs.getString('allergies')            ?? '';
-    _chronicCtrl.text  = prefs.getString('maladies_chroniques')  ?? '';
-    _medsCtrl.text     = prefs.getString('medicaments')          ?? '';
+    _bloodCtrl.text     = prefs.getString('groupe_sanguin')      ?? '';
+    _allergiesCtrl.text = prefs.getString('allergies')           ?? '';
+    _chronicCtrl.text   = prefs.getString('maladies_chroniques') ?? '';
+    _medsCtrl.text      = prefs.getString('medicaments')         ?? '';
 
     // Step 4 emergency contacts JSON: [{name, phone}, ...]
     final raw = prefs.getString('emergency_contacts');
@@ -107,22 +113,32 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     setState(() {});
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  //  IMAGE PICK
+  // ─────────────────────────────────────────────────────────────────────────
   Future<void> _pickImage() async {
     final picked = await ImagePicker()
         .pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('profile_image_path', picked.path);
-    setState(() => _profileImagePath = picked.path);
+    setState(() {
+      _profileImagePath = picked.path;
+      _newImagePicked   = true;
+    });
   }
 
-  // ── Date of birth picker ────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  //  DATE OF BIRTH PICKER
+  // ─────────────────────────────────────────────────────────────────────────
   Future<void> _pickDOB() async {
     final now = DateTime.now();
-    // Parse existing value if any (format: "06 / 10 / 2000")
     DateTime initial = DateTime(now.year - 25, 1, 1);
     try {
-      final parts = _dobCtrl.text.split('/').map((s) => int.parse(s.trim())).toList();
+      final parts = _dobCtrl.text
+          .split('/')
+          .map((s) => int.parse(s.trim()))
+          .toList();
       if (parts.length == 3) initial = DateTime(parts[2], parts[1], parts[0]);
     } catch (_) {}
 
@@ -152,7 +168,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     }
   }
 
-  // ── Gender picker (bottom sheet) ────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  //  GENDER PICKER (bottom sheet)
+  // ─────────────────────────────────────────────────────────────────────────
   void _pickGender() {
     final options = ['Homme', 'Femme'];
     showModalBottomSheet(
@@ -168,7 +186,6 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // handle bar
             Center(
               child: Container(
                 width: 40, height: 4,
@@ -179,11 +196,14 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 ),
               ),
             ),
-            const Text('Genre',
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark)),
+            const Text(
+              'Genre',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+              ),
+            ),
             const SizedBox(height: 14),
             ...options.map((opt) {
               final selected = _genreCtrl.text == opt;
@@ -210,13 +230,16 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     ),
                   ),
                   child: Row(children: [
-                    Text(opt,
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: selected
-                                ? AppColors.primary
-                                : AppColors.textDark)),
+                    Text(
+                      opt,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: selected
+                            ? AppColors.primary
+                            : AppColors.textDark,
+                      ),
+                    ),
                     const Spacer(),
                     if (selected)
                       const Icon(Icons.check_circle,
@@ -231,10 +254,20 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  //  SAVE  (UI from doc1 + full backend logic from doc2)
+  // ─────────────────────────────────────────────────────────────────────────
   Future<void> _save() async {
     setState(() => _saving = true);
     final prefs = await SharedPreferences.getInstance();
 
+    // 1. Upload avatar if a new image was picked
+    if (_newImagePicked && _profileImagePath != null) {
+      await PatientService.uploadAvatar(_profileImagePath!);
+      _newImagePicked = false;
+    }
+
+    // 2. Save to StorageHelper (nom, prenom, phone, email)
     await StorageHelper.saveUser(
       nom:    _nomCtrl.text.trim(),
       prenom: _prenomCtrl.text.trim(),
@@ -242,6 +275,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       email:  _emailCtrl.text.trim(),
     );
 
+    // 3. Save all other fields to SharedPreferences
     await Future.wait([
       prefs.setString('date_naissance',      _dobCtrl.text.trim()),
       prefs.setString('lieu_naissance',      _lieuCtrl.text.trim()),
@@ -253,29 +287,45 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       prefs.setString('medicaments',         _medsCtrl.text.trim()),
     ]);
 
+    // 4. Emergency contacts
     final contacts = _ecControllers.map((e) => {
       'name':  e['name']!.text.trim(),
       'phone': e['phone']!.text.trim(),
     }).toList();
     await prefs.setString('emergency_contacts', jsonEncode(contacts));
 
-    // BACKEND TODO:
-    // final token = await StorageHelper.getToken();
-    // await ApiClient.patch('/patient/profile', token: token, body: {
-    //   'nom': _nomCtrl.text, 'prenom': _prenomCtrl.text,
-    //   'phone': _phoneCtrl.text, 'email': _emailCtrl.text,
-    //   'date_naissance': _dobCtrl.text, 'lieu_naissance': _lieuCtrl.text,
-    //   'genre': _genreCtrl.text, 'adresse': _adresseCtrl.text,
-    //   'groupe_sanguin': _bloodCtrl.text, 'allergies': _allergiesCtrl.text,
-    //   'maladies_chroniques': _chronicCtrl.text, 'medicaments': _medsCtrl.text,
-    //   'emergency_contacts': contacts,
-    // });
+    // 5. Backend sync via PatientService
+    final err = await PatientService.updateProfile({
+      'firstName':         _prenomCtrl.text.trim(),
+      'lastName':          _nomCtrl.text.trim(),
+      'phone':             _phoneCtrl.text.trim(),
+      'email':             _emailCtrl.text.trim(),
+      'dateOfBirth':       _dobCtrl.text.trim(),
+      'placeOfBirth':      _lieuCtrl.text.trim(),
+      'gender':            _genreCtrl.text.trim(),
+      'address':           _adresseCtrl.text.trim(),
+      'bloodType':         _bloodCtrl.text.trim(),
+      'allergies':         _allergiesCtrl.text.trim(),
+      'chronicDiseases':   _chronicCtrl.text.trim(),
+      'currentMedication': _medsCtrl.text.trim(),
+      'emergencyContacts': contacts,
+    });
 
-    setState(() { _saving = false; _showSuccess = true; });
+    if (err != null) {
+      debugPrint('❌ API error: $err');
+    }
+
+    setState(() {
+      _saving      = false;
+      _showSuccess = true;
+    });
     await Future.delayed(const Duration(seconds: 3));
     if (mounted) setState(() => _showSuccess = false);
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  //  DISPOSE
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   void dispose() {
     for (final c in [
@@ -290,6 +340,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     super.dispose();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  //  BUILD
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -305,10 +358,12 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 _avatarPicker(),
                 const SizedBox(height: 28),
 
+                // ── Identité ─────────────────────────────────────────────
                 _section(Icons.person_outline_rounded, 'Identité'),
-                _row2(_field('PRÉNOM', _prenomCtrl),
-                      _field('NOM', _nomCtrl)),
-                // DATE — taps to open native DatePicker
+                _row2(
+                  _field('PRÉNOM', _prenomCtrl),
+                  _field('NOM', _nomCtrl),
+                ),
                 _tappableField(
                   label: 'DATE DE NAISSANCE',
                   controller: _dobCtrl,
@@ -319,7 +374,6 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 _field('LIEU DE NAISSANCE', _lieuCtrl,
                     prefix: Icons.location_city_outlined),
                 _row2(
-                  // GENRE — taps to open bottom sheet picker
                   _tappableField(
                     label: 'GENRE',
                     controller: _genreCtrl,
@@ -330,6 +384,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   _field('GROUPE SANGUIN', _bloodCtrl),
                 ),
 
+                // ── Contact ──────────────────────────────────────────────
                 _section(Icons.phone_outlined, 'Contact'),
                 _field('ADRESSE EMAIL', _emailCtrl,
                     prefix: Icons.email_outlined),
@@ -338,6 +393,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 _field('ADRESSE', _adresseCtrl,
                     prefix: Icons.home_outlined),
 
+                // ── Contacts d'urgence ────────────────────────────────────
                 _section(Icons.emergency_outlined, 'Contacts d\'urgence'),
                 ..._ecControllers.asMap().entries.map((entry) {
                   final i  = entry.key;
@@ -345,16 +401,18 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Contact label + remove button (if more than 1)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4, top: 4),
                         child: Row(
                           children: [
-                            Text('Contact ${i + 1}',
-                                style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textGrey)),
+                            Text(
+                              'Contact ${i + 1}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textGrey,
+                              ),
+                            ),
                             const Spacer(),
                             if (_ecControllers.length > 1)
                               GestureDetector(
@@ -377,11 +435,14 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                                       Icon(Icons.remove_circle_outline,
                                           color: AppColors.error, size: 12),
                                       SizedBox(width: 3),
-                                      Text('Supprimer',
-                                          style: TextStyle(
-                                              fontSize: 10,
-                                              color: AppColors.error,
-                                              fontWeight: FontWeight.w600)),
+                                      Text(
+                                        'Supprimer',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: AppColors.error,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -389,8 +450,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                           ],
                         ),
                       ),
-                      _row2(_field('NOM', ec['name']!),
-                            _field('TÉLÉPHONE', ec['phone']!)),
+                      _row2(
+                        _field('NOM', ec['name']!),
+                        _field('TÉLÉPHONE', ec['phone']!),
+                      ),
                     ],
                   );
                 }),
@@ -408,13 +471,16 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                       }),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
                           border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.4),
-                              width: 1.5),
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                            width: 1.5,
+                          ),
                           borderRadius: BorderRadius.circular(12),
-                          color: AppColors.primary.withValues(alpha: 0.04),
+                          color:
+                              AppColors.primary.withValues(alpha: 0.04),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -422,19 +488,23 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                             Icon(Icons.add_circle_outline,
                                 color: AppColors.primary, size: 18),
                             SizedBox(width: 8),
-                            Text('Ajouter un contact d\'urgence',
-                                style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600)),
+                            Text(
+                              'Ajouter un contact d\'urgence',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
                   ),
 
-                _section(Icons.monitor_heart_outlined,
-                    'Informations médicales'),
+                // ── Informations médicales ────────────────────────────────
+                _section(
+                    Icons.monitor_heart_outlined, 'Informations médicales'),
                 _field('ALLERGIES', _allergiesCtrl),
                 _field('MALADIES CHRONIQUES', _chronicCtrl),
                 _field('MÉDICAMENTS ACTUELS', _medsCtrl),
@@ -442,12 +512,13 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             ),
           ),
 
-          // ── Success toast ──────────────────────────────────────────────
+          // ── Success toast ───────────────────────────────────────────────
           AnimatedPositioned(
             duration: const Duration(milliseconds: 350),
             curve: Curves.easeOut,
             bottom: _showSuccess ? 100 : -80,
-            left: 20, right: 20,
+            left: 20,
+            right: 20,
             child: Container(
               padding: const EdgeInsets.symmetric(
                   horizontal: 20, vertical: 14),
@@ -456,9 +527,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.35),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4))
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: const Row(
@@ -466,19 +538,24 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 children: [
                   Text('✅', style: TextStyle(fontSize: 16)),
                   SizedBox(width: 10),
-                  Text('Vos informations ont été mises à jour !',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13)),
+                  Text(
+                    'Vos informations ont été mises à jour !',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
 
-          // ── Save button ────────────────────────────────────────────────
+          // ── Save button ─────────────────────────────────────────────────
           Positioned(
-            bottom: 20, left: 20, right: 20,
+            bottom: 20,
+            left: 20,
+            right: 20,
             child: ElevatedButton.icon(
               onPressed: _saving ? null : _save,
               style: ElevatedButton.styleFrom(
@@ -492,9 +569,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               ),
               icon: _saving
                   ? const SizedBox(
-                      width: 18, height: 18,
+                      width: 18,
+                      height: 18,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
+                          color: Colors.white, strokeWidth: 2),
+                    )
                   : const Icon(Icons.save_alt_rounded,
                       color: Colors.white, size: 20),
               label: Text(
@@ -502,9 +581,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     ? 'Enregistrement...'
                     : 'Enregistrer les Modifications',
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600),
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -512,6 +592,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       ),
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //  UI HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
 
   PreferredSizeWidget _appBar() => AppBar(
         backgroundColor: const Color(0xFFF4FBF8),
@@ -524,13 +608,18 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
-            Text('Informations Personnelles',
-                style: TextStyle(
-                    color: AppColors.textDark,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17)),
-            Text('Modifier les détails de votre profil',
-                style: TextStyle(color: AppColors.primary, fontSize: 11)),
+            Text(
+              'Informations Personnelles',
+              style: TextStyle(
+                color: AppColors.textDark,
+                fontWeight: FontWeight.w700,
+                fontSize: 17,
+              ),
+            ),
+            Text(
+              'Modifier les détails de votre profil',
+              style: TextStyle(color: AppColors.primary, fontSize: 11),
+            ),
           ],
         ),
       );
@@ -539,43 +628,56 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         onTap: _pickImage,
         child: Column(
           children: [
-            Stack(children: [
-              Container(
-                width: 100, height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primary, width: 3),
-                  boxShadow: [
-                    BoxShadow(
+            Stack(
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border:
+                        Border.all(color: AppColors.primary, width: 3),
+                    boxShadow: [
+                      BoxShadow(
                         color: AppColors.primary.withValues(alpha: 0.2),
-                        blurRadius: 14, spreadRadius: 2)
-                  ],
+                        blurRadius: 14,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: _profileImagePath != null &&
+                            File(_profileImagePath!).existsSync()
+                        ? Image.file(File(_profileImagePath!),
+                            fit: BoxFit.cover)
+                        : Container(
+                            color: AppColors.primaryLight,
+                            child: const Icon(Icons.person,
+                                size: 50, color: AppColors.primary),
+                          ),
+                  ),
                 ),
-                child: ClipOval(
-                  child: _profileImagePath != null &&
-                          File(_profileImagePath!).existsSync()
-                      ? Image.file(File(_profileImagePath!),
-                          fit: BoxFit.cover)
-                      : Container(
-                          color: AppColors.primaryLight,
-                          child: const Icon(Icons.person,
-                              size: 50, color: AppColors.primary)),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded,
+                        color: Colors.white, size: 15),
+                  ),
                 ),
-              ),
-              Positioned(
-                bottom: 0, right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: const BoxDecoration(
-                      color: AppColors.primary, shape: BoxShape.circle),
-                  child: const Icon(Icons.camera_alt_rounded,
-                      color: Colors.white, size: 15),
-                ),
-              ),
-            ]),
+              ],
+            ),
             const SizedBox(height: 8),
-            const Text('Appuyez pour changer de photo',
-                style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
+            const Text(
+              'Appuyez pour changer de photo',
+              style:
+                  TextStyle(color: AppColors.textGrey, fontSize: 12),
+            ),
           ],
         ),
       );
@@ -585,42 +687,57 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         child: Row(children: [
           Icon(icon, color: AppColors.primary, size: 17),
           const SizedBox(width: 8),
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
+          ),
           const SizedBox(width: 10),
           Expanded(
-              child: Divider(
-                  color: AppColors.primary.withValues(alpha: 0.25),
-                  thickness: 1)),
+            child: Divider(
+              color: AppColors.primary.withValues(alpha: 0.25),
+              thickness: 1,
+            ),
+          ),
         ]),
       );
 
-  Widget _field(String label, TextEditingController ctrl,
-          {IconData? prefix}) =>
+  Widget _field(
+    String label,
+    TextEditingController ctrl, {
+    IconData? prefix,
+  }) =>
       Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textGrey,
-                    letterSpacing: 0.4)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textGrey,
+                letterSpacing: 0.4,
+              ),
+            ),
             const SizedBox(height: 5),
             _GreenFocusField(controller: ctrl, prefixIcon: prefix),
           ],
         ),
       );
 
-  Widget _row2(Widget a, Widget b) =>
-      Row(children: [Expanded(child: a), const SizedBox(width: 10), Expanded(child: b)]);
+  Widget _row2(Widget a, Widget b) => Row(
+        children: [
+          Expanded(child: a),
+          const SizedBox(width: 10),
+          Expanded(child: b),
+        ],
+      );
 
-  // Tappable read-only field (calendar / picker)
   Widget _tappableField({
     required String label,
     required TextEditingController controller,
@@ -633,12 +750,15 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textGrey,
-                    letterSpacing: 0.4)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textGrey,
+                letterSpacing: 0.4,
+              ),
+            ),
             const SizedBox(height: 5),
             GestureDetector(
               onTap: onTap,
@@ -649,30 +769,34 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: AppColors.border.withValues(alpha: 0.5)),
+                      color: AppColors.border.withValues(alpha: 0.5),
+                    ),
                   ),
                   child: TextField(
                     controller: controller,
                     style: const TextStyle(
-                        color: AppColors.textDark,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500),
+                      color: AppColors.textDark,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                     decoration: InputDecoration(
                       isDense: true,
                       hintText: hint,
                       hintStyle: const TextStyle(
-                          color: AppColors.textGrey, fontSize: 13),
+                        color: AppColors.textGrey,
+                        fontSize: 13,
+                      ),
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 13),
                       border: InputBorder.none,
                       prefixIcon:
                           Icon(icon, color: AppColors.textGrey, size: 16),
-                      prefixIconConstraints:
-                          const BoxConstraints(minWidth: 36, minHeight: 0),
+                      prefixIconConstraints: const BoxConstraints(
+                          minWidth: 36, minHeight: 0),
                       suffixIcon: const Icon(Icons.arrow_drop_down,
                           color: AppColors.border, size: 20),
-                      suffixIconConstraints:
-                          const BoxConstraints(minWidth: 36, minHeight: 0),
+                      suffixIconConstraints: const BoxConstraints(
+                          minWidth: 36, minHeight: 0),
                     ),
                   ),
                 ),
@@ -683,6 +807,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  GREEN FOCUS FIELD
 // ─────────────────────────────────────────────────────────────────────────────
 class _GreenFocusField extends StatefulWidget {
   final TextEditingController controller;
@@ -718,9 +844,10 @@ class _GreenFocusFieldState extends State<_GreenFocusField> {
         child: TextField(
           controller: widget.controller,
           style: const TextStyle(
-              color: AppColors.textDark,
-              fontSize: 14,
-              fontWeight: FontWeight.w500),
+            color: AppColors.textDark,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
           decoration: InputDecoration(
             isDense: true,
             contentPadding:
