@@ -1,6 +1,8 @@
+// lib/screens/demandes_screen.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
+
 
 class DemandesScreen extends StatefulWidget {
   const DemandesScreen({super.key});
@@ -49,7 +51,22 @@ class _DemandesScreenState extends State<DemandesScreen> {
     ),
   ];
 
-  // ── Show modal with blur ───────────────────────────────────────────────────
+  // ─── INIT STATE ────────────────────────────────────────────────────────────
+  @override
+  void initState() {
+    super.initState();
+    
+  }
+
+  // ─── Obtenir la date du jour ───────────────────────────────────────────────
+  String _getTodayDate() {
+    final now = DateTime.now();
+    return '${now.day.toString().padLeft(2, '0')}/'
+           '${now.month.toString().padLeft(2, '0')}/'
+           '${now.year}';
+  }
+
+  // ─── Show modal with blur ───────────────────────────────────────────────────
   void _showAuthorizationModal(_AccessRequest request) {
     showGeneralDialog(
       context: context,

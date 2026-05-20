@@ -6,14 +6,14 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-/* apply(plugin = "com.google.gms.google-services") // ← move here, after plugins
- */
+ 
 
-/* dependencies {
+dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
-  implementation("com.google.firebase:firebase-messaging") // ← add this for notifications
-
-} */
+    implementation("com.google.firebase:firebase-messaging")
+    
+   
+}
 
 
 android {
