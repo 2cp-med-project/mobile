@@ -16,6 +16,9 @@ class Endpoints {
   //notifications
   static const registerFcmToken = '/notifications/register-fcmtoken'; // POST (Bearer)
  static const sendpatientresponse = '/notifications/patient-response'; // POST (Bearer)
+  //notifications
+  static const registerFcmToken = '/notifications/register-fcmtoken'; // POST (Bearer)
+ static const sendpatientresponse = '/notifications/patient-response'; // POST (Bearer)
   // ── Users ─────────────────────────────────────────────────────────────────
   static const me          = '/users/me';          // GET / PATCH (Bearer)
   static String patient(String id) => '/users/patient/$id'; // GET (doctor)
