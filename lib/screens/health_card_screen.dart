@@ -269,7 +269,7 @@ class _CardFront extends StatelessWidget {
             child: Opacity(
               opacity: 0.10,
               child: SvgPicture.asset(
-                'assets/images/backgroundlogo.svg',
+                'assets/images/backgroundLogo.svg',
                 width: 140,
                 colorFilter: const ColorFilter.mode(
                   AppColors.primary,

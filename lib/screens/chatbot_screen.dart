@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
 import '../config/storage_helper.dart';
 
 class ChatbotScreen extends StatefulWidget {
@@ -249,6 +251,94 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     );
   }
 
+  void _openSOSSheet() {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(20),
+      ),
+    ),
+    builder: (context) {
+      final List<Map<String, String>> sos = [
+        {'name': 'Pompiers / SAMU', 'number': '14'},
+        {'name': 'Police', 'number': '17'},
+        {'name': 'Gendarmerie Nationale', 'number': '1055'},
+        {'name': 'Centre Anti-Poison', 'number': '021979898'},
+      ];
+
+      return ListView(
+        shrinkWrap: true,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              "🚨 SOS URGENCE",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+
+          ...sos.map((e) {
+            return ListTile(
+              leading: const Icon(
+                Icons.phone,
+                color: Colors.red,
+              ),
+
+              title: Text(e['name']!),
+
+              trailing: Text(
+                e['number']!,
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              // TAP → CALL
+              onTap: () async {
+                final Uri phoneUri = Uri(
+                  scheme: 'tel',
+                  path: e['number'],
+                );
+
+                try {
+                  await launchUrl(
+                    phoneUri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                } catch (e) {
+                  debugPrint('Call error: $e');
+                }
+              },
+            );
+          }),
+        ],
+      );
+    },
+  );
+}
+  Future<void> _sendEmergencyLocation() async {
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    final lat = position.latitude;
+    final lng = position.longitude;
+
+    final message =
+        "🚨 URGENCE\nJe suis en danger.\nhttps://maps.google.com/?q=$lat,$lng";
+
+    final Uri smsUri = Uri.parse(
+      "sms:1055?body=${Uri.encodeComponent(message)}",
+    );
+
+    await launchUrl(smsUri);
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
@@ -277,7 +367,6 @@ class _ChatbotScreenState extends State<ChatbotScreen>
             children: [
               _buildHeader(),
               Expanded(child: _buildMessages()),
-              _buildQuickChips(),
               _buildInputBar(),
             ],
           ),
@@ -526,141 +615,103 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     );
   }
 
-  // ── Quick chips
- Widget _buildQuickChips() {
-  final chips = [
-    ('📋 Mes rapports', 'Affiche mes rapports médicaux'),
-    ('💊 Mes médicaments', 'Affiche mes médicaments'),
-    ('📞 Numeros D’urgence', 'Affiche les numeros d\'urgence'),
-  ];
-
-  return Container(
-    color: Colors.white,
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: chips.map((chip) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              onTap: () => _sendQuickMessage(chip.$2),
-              borderRadius: BorderRadius.circular(20),
-              splashColor: const Color(0xFFF0FBF8), // ripple color
-              highlightColor: const Color(0xFFF0FBF8), // pressed color
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF1FAF87).withOpacity(0.3),
-                  ),
-                ),
-                child: Text(
-                  chip.$1,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF1FAF87),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    ),
-  );
-}
-
   Widget _buildInputBar() {
-  return Container(
-    color: Colors.white,
-    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-    child: Row(
-      children: [
-        //  Gallery Button (circle, small vertical padding)
-        GestureDetector(
-          onTap: _pickImage,
-          child: Container(
-            width: 40,
-            height: 40,
-            margin: const EdgeInsets.symmetric(vertical: 2),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1FAF87), // primary color
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.photo_outlined,
-              color: Colors.white,
-              size: 20,
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Row(
+        children: [
+
+
+          // 🚨 SOS ICON (NEW)
+          GestureDetector(
+            onTap: _openSOSSheet,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.emergency,
+                color: Colors.red,
+                size: 20,
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 8),
 
-        // Text Field with green border when focused
-        Expanded(
-          child: Focus(
-            onFocusChange: (hasFocus) {
-              // rebuild to update border color
-              // optional: you can use a StatefulBuilder if needed
-            },
-            child: TextField(
-              controller: _inputCtrl,
-              style: const TextStyle(fontSize: 13),
-              decoration: InputDecoration(
-                hintText: 'Demander n\'importe quoi...',
-                hintStyle: TextStyle(
-                  color: const Color(0xFFBDBDBD),
-                  fontSize: 13,
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: const BorderSide(color: const Color(0xFF5FCFAA) , width: 0.5),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF1FAF87), // primary color when focused
-                    width: 0.5,
+          const SizedBox(width: 8),
+
+
+          // Text Field with green border when focused
+          Expanded(
+            child: Focus(
+              onFocusChange: (hasFocus) {
+                // rebuild to update border color
+                // optional: you can use a StatefulBuilder if needed
+              },
+              child: TextField(
+                controller: _inputCtrl,
+                style: const TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Demander n\'importe quoi...',
+                  hintStyle: TextStyle(
+                    color: const Color(0xFFBDBDBD),
+                    fontSize: 13,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(
+                      color: const Color(0xFF5FCFAA),
+                      width: 0.5,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF1FAF87), // primary color when focused
+                      width: 0.5,
+                    ),
                   ),
                 ),
+                onSubmitted: (_) => _sendMessage(),
               ),
-              onSubmitted: (_) => _sendMessage(),
             ),
           ),
-        ),
-        const SizedBox(width: 8),
 
-        //  Send Button (changes color on tap)
-        GestureDetector(
-          onTap: _sendMessage,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: _inputCtrl.text.isEmpty
-                  ? const Color(0xFFF0FBF8)
-                  : const Color(0xFF1FAF87), // green if text exists
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Icon(
-              Icons.send_rounded,
-              color: _inputCtrl.text.isEmpty
-                  ? const Color(0xFF1FAF87)
-                  : Colors.white, // white if background green
-              size: 20,
+
+          const SizedBox(width: 8),
+
+          //  Send Button (changes color on tap)
+          GestureDetector(
+            onTap: _sendMessage,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _inputCtrl.text.isEmpty
+                    ? const Color(0xFF1FAF87)
+                    : const Color(0xFFF0FBF8), // green if text exists
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Icon(
+                Icons.send_rounded,
+                color: _inputCtrl.text.isEmpty
+                    ? const Color(0xFFF0FBF8)
+                    : const Color(0xFF1FAF87), // white if background green
+                size: 20,
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   // ── Side panel
   Widget _buildSidePanel() {

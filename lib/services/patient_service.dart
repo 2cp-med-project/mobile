@@ -2,46 +2,61 @@ import '../config/api_client.dart';
 import '../config/api_endpoints.dart';
 
 class PatientService {
+  // ─────────────────────────────────────────────
+  // UPDATE PROFILE
+  // PATCH /users/me
+  // ─────────────────────────────────────────────
+  static Future<String?> updateProfile(
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      print('📤 UPDATE PROFILE REQUEST:');
+      print(data);
 
-  // ── UPDATE PROFILE ─────────────────────────────
-  static Future<String?> updateProfile(Map<String, dynamic> data) async {
-    print("📤 UPDATE PROFILE REQUEST:");
-    print(data);
+      final res = await ApiClient.patch(
+        Endpoints.me, // '/users/me'
+        data,
+      );
 
-    final res = await ApiClient.patch(
-      Endpoints.me, // should be '/users/me'
-      data,
-    );
+      print('📥 UPDATE PROFILE RESPONSE:');
+      print(res.data);
 
-    print("📥 UPDATE PROFILE RESPONSE:");
-    print(res.data);
+      if (!res.success) {
+        print('❌ ERROR: ${res.error}');
+        return res.error ?? 'Erreur mise à jour profil';
+      }
 
-    if (!res.success) {
-      print("❌ ERROR: ${res.error}");
-      return res.error ?? 'Erreur mise à jour profil';
+      return null;
+    } catch (e) {
+      print('❌ EXCEPTION: $e');
+      return 'Erreur de connexion au serveur';
     }
-
-    return null;
   }
 
-  // ── UPLOAD AVATAR (optional endpoint) ──────────
-  static Future<String?> uploadAvatar(String path) async {
-    print("📤 UPLOAD AVATAR: $path");
+  // ─────────────────────────────────────────────
+  // GET PROFILE
+  // GET /users/me
+  // ─────────────────────────────────────────────
+  static Future<Map<String, dynamic>?> getProfile() async {
+    try {
+      print('📤 GET PROFILE REQUEST');
 
-    final res = await ApiClient.uploadFile(
-      '/users/upload-avatar', // ⚠️ make sure backend has this route
-      path,
-      'avatar',
-    );
+      final res = await ApiClient.get(
+        Endpoints.me, // '/users/me'
+      );
 
-    print("📥 AVATAR RESPONSE:");
-    print(res.data);
+      print('📥 GET PROFILE RESPONSE:');
+      print(res.data);
 
-    if (!res.success) {
-      print("❌ ERROR: ${res.error}");
-      return res.error ?? 'Erreur upload image';
+      if (!res.success || res.data == null) {
+        print('❌ ERROR: ${res.error}');
+        return null;
+      }
+
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      print('❌ EXCEPTION: $e');
+      return null;
     }
-
-    return null;
   }
 }

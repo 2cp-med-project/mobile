@@ -14,26 +14,6 @@ import '../config/storage_helper.dart';
 import '../config/validators.dart';
 import '../services/patient_service.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  KEY REFERENCE  (single source of truth — matches sign_up_step*.dart)
-// ─────────────────────────────────────────────────────────────────────────────
-//  'nom'                 → StorageHelper  (step 1)
-//  'prenom'              → StorageHelper  (step 1)
-//  'date_naissance'      → step 2  "06 / 10 / 2000"
-//  'lieu_naissance'      → step 2
-//  'genre'               → step 2
-//  'adresse'             → step 3  (full address string)
-//  'phone'               → StorageHelper  (step 3)
-//  'email'               → StorageHelper  (step 3)
-//  'patient_id'          → step 4
-//  'emergency_contacts'  → step 4  JSON: [{name, phone}]  ← MAX 1
-//  'profile_image_path'  → this screen  (gallery pick)
-//  'groupe_sanguin'      → this screen
-//  'allergies'           → this screen
-//  'maladies_chroniques' → this screen
-//  'medicaments'         → this screen
-// ─────────────────────────────────────────────────────────────────────────────
-
 class PersonalInfoScreen extends StatefulWidget {
   const PersonalInfoScreen({super.key});
 
@@ -42,18 +22,18 @@ class PersonalInfoScreen extends StatefulWidget {
 }
 
 class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
-  final _prenomCtrl    = TextEditingController();
-  final _nomCtrl       = TextEditingController();
-  final _dobCtrl       = TextEditingController();
-  final _lieuCtrl      = TextEditingController();
-  final _genreCtrl     = TextEditingController();
-  final _bloodCtrl     = TextEditingController();
-  final _emailCtrl     = TextEditingController();
-  final _phoneCtrl     = TextEditingController();
-  final _adresseCtrl   = TextEditingController();
+  final _prenomCtrl = TextEditingController();
+  final _nomCtrl = TextEditingController();
+  final _dobCtrl = TextEditingController();
+  final _lieuCtrl = TextEditingController();
+  final _genreCtrl = TextEditingController();
+  final _bloodCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _adresseCtrl = TextEditingController();
   final _allergiesCtrl = TextEditingController();
-  final _chronicCtrl   = TextEditingController();
-  final _medsCtrl      = TextEditingController();
+  final _chronicCtrl = TextEditingController();
+  final _medsCtrl = TextEditingController();
 
   // MAX 1 emergency contact — null means none exists yet
   Map<String, TextEditingController>? _ecEntry;
@@ -63,8 +43,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   String? _ecPhoneError;
 
   String? _profileImagePath;
-  bool _saving         = false;
-  bool _showSuccess    = false;
+  bool _saving = false;
+  bool _showSuccess = false;
   bool _newImagePicked = false;
 
   @override
@@ -73,57 +53,195 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     _load();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  //  LOAD
-  // ─────────────────────────────────────────────────────────────────────────
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+Future<void> _load() async {
+  final prefs = await SharedPreferences.getInstance();
 
-    _prenomCtrl.text  = prefs.getString('prenom') ?? '';
-    _nomCtrl.text     = prefs.getString('nom')    ?? '';
-    _phoneCtrl.text   = prefs.getString('phone')  ?? '';
-    _emailCtrl.text   = prefs.getString('email')  ?? '';
+  // local image only
+  _profileImagePath =
+      prefs.getString('profile_image_path');
 
-    _dobCtrl.text     = prefs.getString('date_naissance') ?? '';
-    _lieuCtrl.text    = prefs.getString('lieu_naissance') ?? '';
-    _genreCtrl.text   = prefs.getString('genre')          ?? '';
+  final user = await PatientService.getProfile();
 
-    _adresseCtrl.text = prefs.getString('adresse') ?? '';
+  if (user == null) {
+    setState(() {});
+    return;
+  }
 
-    _bloodCtrl.text     = prefs.getString('groupe_sanguin')      ?? '';
-    _allergiesCtrl.text = prefs.getString('allergies')           ?? '';
-    _chronicCtrl.text   = prefs.getString('maladies_chroniques') ?? '';
-    _medsCtrl.text      = prefs.getString('medicaments')         ?? '';
+  // identity
+  _prenomCtrl.text =
+      user['firstName'] ?? '';
 
-    // Load at most 1 emergency contact
-    final raw = prefs.getString('emergency_contacts');
-    if (raw != null) {
-      final list = List<Map<String, dynamic>>.from(jsonDecode(raw));
-      if (list.isNotEmpty) {
-        final e = list.first;
-        _ecEntry = {
-          'name':  TextEditingController(text: e['name']  as String? ?? ''),
-          'phone': TextEditingController(text: e['phone'] as String? ?? ''),
-        };
-      }
+  _nomCtrl.text =
+      user['lastName'] ?? '';
+
+  _emailCtrl.text =
+      user['email'] ?? '';
+
+  _phoneCtrl.text =
+      user['phone'] ?? '';
+
+  _lieuCtrl.text =
+      user['placeOfBirth'] ?? '';
+
+  _adresseCtrl.text =
+      user['address'] ?? '';
+
+  // gender
+  final gender = user['gender'];
+
+  _genreCtrl.text =
+      gender == 'male'
+          ? 'Homme'
+          : gender == 'female'
+              ? 'Femme'
+              : '';
+
+  // date of birth
+  if (user['dateOfBirth'] != null) {
+    final date =
+        DateTime.parse(user['dateOfBirth']);
+
+    _dobCtrl.text =
+        '${date.day.toString().padLeft(2, '0')} / '
+        '${date.month.toString().padLeft(2, '0')} / '
+        '${date.year}';
+  }
+
+  // emergency contact
+  final contacts =
+      user['emergencyContacts'];
+
+  if (contacts != null &&
+      contacts.isNotEmpty) {
+    final e = contacts.first;
+
+    _ecEntry = {
+      'name': TextEditingController(
+        text: e['name'] ?? '',
+      ),
+      'phone': TextEditingController(
+        text: e['phone'] ?? '',
+      ),
+    };
+  }
+
+  // medical resume parsing
+  final medicalResume =
+      user['medicalResume'] ?? '';
+
+  _bloodCtrl.text =
+      _extractSingleLine(
+    medicalResume,
+    'Groupe sanguin:',
+  );
+
+  _allergiesCtrl.text =
+      _extractSingleLine(
+    medicalResume,
+    'Allergies:',
+  );
+
+  _chronicCtrl.text =
+      _extractMultiLine(
+    medicalResume,
+    'Maladies chroniques:',
+    'Médicaments:',
+  );
+
+  _medsCtrl.text =
+      _extractAfter(
+    medicalResume,
+    'Médicaments:',
+  );
+
+  setState(() {});
+}
+
+String _extractSingleLine(
+  String text,
+  String label,
+) {
+  try {
+    final regex = RegExp(
+      '$label\\s*(.*)',
+    );
+
+    final match =
+        regex.firstMatch(text);
+
+    return match
+            ?.group(1)
+            ?.trim() ??
+        '';
+  } catch (_) {
+    return '';
+  }
+}
+
+String _extractMultiLine(
+  String text,
+  String startLabel,
+  String endLabel,
+) {
+  try {
+    final start =
+        text.indexOf(startLabel);
+
+    final end =
+        text.indexOf(endLabel);
+
+    if (start == -1 ||
+        end == -1) {
+      return '';
     }
 
-    _profileImagePath = prefs.getString('profile_image_path');
-    setState(() {});
+    return text
+        .substring(
+          start +
+              startLabel.length,
+          end,
+        )
+        .trim();
+  } catch (_) {
+    return '';
   }
+}
+
+String _extractAfter(
+  String text,
+  String label,
+) {
+  try {
+    final index =
+        text.indexOf(label);
+
+    if (index == -1) {
+      return '';
+    }
+
+    return text
+        .substring(
+          index + label.length,
+        )
+        .trim();
+  } catch (_) {
+    return '';
+  }
+}
 
   // ─────────────────────────────────────────────────────────────────────────
   //  IMAGE PICK
-  // ─────────────────────────────────────────────────────────────────────────
   Future<void> _pickImage() async {
-    final picked = await ImagePicker()
-        .pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (picked == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('profile_image_path', picked.path);
     setState(() {
       _profileImagePath = picked.path;
-      _newImagePicked   = true;
+      _newImagePicked = true;
     });
   }
 
@@ -187,7 +305,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: AppColors.border,
@@ -215,7 +334,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: selected
                         ? AppColors.primary.withValues(alpha: 0.1)
@@ -226,22 +347,27 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                       width: 1.5,
                     ),
                   ),
-                  child: Row(children: [
-                    Text(
-                      opt,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: selected
-                            ? AppColors.primary
-                            : AppColors.textDark,
+                  child: Row(
+                    children: [
+                      Text(
+                        opt,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.textDark,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    if (selected)
-                      const Icon(Icons.check_circle,
-                          color: AppColors.primary, size: 18),
-                  ]),
+                      const Spacer(),
+                      if (selected)
+                        const Icon(
+                          Icons.check_circle,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
+                    ],
+                  ),
                 ),
               );
             }),
@@ -258,16 +384,16 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   bool _validateEcEntry() {
     if (_ecEntry == null) return true; // nothing to validate
 
-    final name  = _ecEntry!['name']!.text.trim();
+    final name = _ecEntry!['name']!.text.trim();
     final phone = _ecEntry!['phone']!.text.trim();
 
-    final nameErr  = name.isEmpty  ? 'Le nom est requis' : null;
+    final nameErr = name.isEmpty ? 'Le nom est requis' : null;
     final phoneErr = phone.isEmpty
         ? 'Le numéro est requis'
         : Validators.phone(phone); // reuses your existing phone validator
 
     setState(() {
-      _ecNameError  = nameErr;
+      _ecNameError = nameErr;
       _ecPhoneError = phoneErr;
     });
 
@@ -277,84 +403,187 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   // ─────────────────────────────────────────────────────────────────────────
   //  SAVE
   // ─────────────────────────────────────────────────────────────────────────
-  Future<void> _save() async {
-    // Validate emergency contact before proceeding
-    if (!_validateEcEntry()) return;
+ Future<void> _save() async {
+  if (!_validateEcEntry()) return;
 
-    setState(() => _saving = true);
-    final prefs = await SharedPreferences.getInstance();
+  setState(() => _saving = true);
 
-    // 1. Upload avatar if new image was picked
-    if (_newImagePicked && _profileImagePath != null) {
-      await PatientService.uploadAvatar(_profileImagePath!);
-      _newImagePicked = false;
-    }
+  final prefs =
+      await SharedPreferences.getInstance();
 
-    // 2. Save StorageHelper fields
-    await StorageHelper.saveUser(
-      nom:    _nomCtrl.text.trim(),
-      prenom: _prenomCtrl.text.trim(),
-      phone:  _phoneCtrl.text.trim(),
-      email:  _emailCtrl.text.trim(),
+  // avatar local only
+  _newImagePicked = false;
+
+  // StorageHelper sync
+  await StorageHelper.saveUser(
+    nom: _nomCtrl.text.trim(),
+    prenom: _prenomCtrl.text.trim(),
+    phone: _phoneCtrl.text.trim(),
+    email: _emailCtrl.text.trim(),
+  );
+
+  // save local values
+  await Future.wait([
+    prefs.setString(
+      'date_naissance',
+      _dobCtrl.text.trim(),
+    ),
+    prefs.setString(
+      'lieu_naissance',
+      _lieuCtrl.text.trim(),
+    ),
+    prefs.setString(
+      'genre',
+      _genreCtrl.text.trim(),
+    ),
+    prefs.setString(
+      'adresse',
+      _adresseCtrl.text.trim(),
+    ),
+    prefs.setString(
+      'groupe_sanguin',
+      _bloodCtrl.text.trim(),
+    ),
+    prefs.setString(
+      'allergies',
+      _allergiesCtrl.text.trim(),
+    ),
+    prefs.setString(
+      'maladies_chroniques',
+      _chronicCtrl.text.trim(),
+    ),
+    prefs.setString(
+      'medicaments',
+      _medsCtrl.text.trim(),
+    ),
+  ]);
+
+  // emergency contact
+  final contacts =
+      _ecEntry != null
+          ? [
+              {
+                'name':
+                    _ecEntry!['name']!
+                        .text
+                        .trim(),
+                'phone':
+                    _ecEntry!['phone']!
+                        .text
+                        .trim(),
+              },
+            ]
+          : <Map<String, String>>[];
+
+  await prefs.setString(
+    'emergency_contacts',
+    jsonEncode(contacts),
+  );
+
+  DateTime? parsedDate;
+
+  try {
+    final parts =
+        _dobCtrl.text
+            .split('/')
+            .map(
+              (e) => e.trim(),
+            )
+            .toList();
+
+    parsedDate = DateTime(
+      int.parse(parts[2]),
+      int.parse(parts[1]),
+      int.parse(parts[0]),
     );
+  } catch (_) {}
 
-    // 3. Save remaining fields
-    await Future.wait([
-      prefs.setString('date_naissance',      _dobCtrl.text.trim()),
-      prefs.setString('lieu_naissance',      _lieuCtrl.text.trim()),
-      prefs.setString('genre',               _genreCtrl.text.trim()),
-      prefs.setString('adresse',             _adresseCtrl.text.trim()),
-      prefs.setString('groupe_sanguin',      _bloodCtrl.text.trim()),
-      prefs.setString('allergies',           _allergiesCtrl.text.trim()),
-      prefs.setString('maladies_chroniques', _chronicCtrl.text.trim()),
-      prefs.setString('medicaments',         _medsCtrl.text.trim()),
-    ]);
+  final err =
+      await PatientService.updateProfile({
+    'firstName':
+        _prenomCtrl.text.trim(),
 
-    // 4. Emergency contact — max 1, stored as single-item list for API compat
-    final contacts = _ecEntry != null
-        ? [
-            {
-              'name':  _ecEntry!['name']!.text.trim(),
-              'phone': _ecEntry!['phone']!.text.trim(),
-            }
-          ]
-        : <Map<String, String>>[];
-    await prefs.setString('emergency_contacts', jsonEncode(contacts));
+    'lastName':
+        _nomCtrl.text.trim(),
 
-    // 5. Backend sync
-    final err = await PatientService.updateProfile({
-      'firstName':         _prenomCtrl.text.trim(),
-      'lastName':          _nomCtrl.text.trim(),
-      'phone':             _phoneCtrl.text.trim(),
-      'email':             _emailCtrl.text.trim(),
-      'dateOfBirth':       _dobCtrl.text.trim(),
-      'placeOfBirth':      _lieuCtrl.text.trim(),
-      'gender':            _genreCtrl.text.trim(),
-      'address':           _adresseCtrl.text.trim(),
-      'bloodType':         _bloodCtrl.text.trim(),
-      'allergies':         _allergiesCtrl.text.trim(),
-      'chronicDiseases':   _chronicCtrl.text.trim(),
-      'currentMedication': _medsCtrl.text.trim(),
-      'emergencyContacts': contacts,
-    });
+    'phone':
+        _phoneCtrl.text.trim(),
 
-    if (err != null) debugPrint('❌ API error: $err');
+    'email':
+        _emailCtrl.text.trim(),
 
-    setState(() { _saving = false; _showSuccess = true; });
-    await Future.delayed(const Duration(seconds: 3));
-    if (mounted) setState(() => _showSuccess = false);
+    'placeOfBirth':
+        _lieuCtrl.text.trim(),
+
+    'address':
+        _adresseCtrl.text.trim(),
+
+    'gender':
+        _genreCtrl.text ==
+                'Homme'
+            ? 'male'
+            : 'female',
+
+    'dateOfBirth':
+        parsedDate
+            ?.toIso8601String(),
+
+    'emergencyContacts':
+        contacts,
+
+    'medicalResume': '''
+Groupe sanguin: ${_bloodCtrl.text}
+
+Allergies: ${_allergiesCtrl.text}
+
+Maladies chroniques:
+${_chronicCtrl.text}
+
+Médicaments:
+${_medsCtrl.text}
+''',
+  });
+
+  if (err != null) {
+    debugPrint(
+      '❌ API error: $err',
+    );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  setState(() {
+    _saving = false;
+    _showSuccess = true;
+  });
+
+  await Future.delayed(
+    const Duration(seconds: 3),
+  );
+
+  if (mounted) {
+    setState(
+      () => _showSuccess = false,
+    );
+  }
+}
   //  DISPOSE
-  // ─────────────────────────────────────────────────────────────────────────
+
   @override
   void dispose() {
     for (final c in [
-      _prenomCtrl, _nomCtrl, _dobCtrl, _lieuCtrl, _genreCtrl, _bloodCtrl,
-      _emailCtrl, _phoneCtrl, _adresseCtrl, _allergiesCtrl, _chronicCtrl,
+      _prenomCtrl,
+      _nomCtrl,
+      _dobCtrl,
+      _lieuCtrl,
+      _genreCtrl,
+      _bloodCtrl,
+      _emailCtrl,
+      _phoneCtrl,
+      _adresseCtrl,
+      _allergiesCtrl,
+      _chronicCtrl,
       _medsCtrl,
-    ]) c.dispose();
+    ])
+      c.dispose();
     _ecEntry?['name']?.dispose();
     _ecEntry?['phone']?.dispose();
     super.dispose();
@@ -388,8 +617,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   icon: Icons.calendar_today_outlined,
                   onTap: _pickDOB,
                 ),
-                _field('LIEU DE NAISSANCE', _lieuCtrl,
-                    prefix: Icons.location_city_outlined),
+                _field(
+                  'LIEU DE NAISSANCE',
+                  _lieuCtrl,
+                  prefix: Icons.location_city_outlined,
+                ),
                 _row2(
                   _tappableField(
                     label: 'GENRE',
@@ -403,10 +635,16 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
                 // ── Contact ────────────────────────────────────────────────
                 _section(Icons.phone_outlined, 'Contact'),
-                _field('ADRESSE EMAIL', _emailCtrl,
-                    prefix: Icons.email_outlined),
-                _field('NUMÉRO DE TÉLÉPHONE', _phoneCtrl,
-                    prefix: Icons.phone_outlined),
+                _field(
+                  'ADRESSE EMAIL',
+                  _emailCtrl,
+                  prefix: Icons.email_outlined,
+                ),
+                _field(
+                  'NUMÉRO DE TÉLÉPHONE',
+                  _phoneCtrl,
+                  prefix: Icons.phone_outlined,
+                ),
                 _field('ADRESSE', _adresseCtrl, prefix: Icons.home_outlined),
 
                 // ── Contact d'urgence (MAX 1) ──────────────────────────────
@@ -431,13 +669,15 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                           onTap: () => setState(() {
                             _ecEntry!['name']!.dispose();
                             _ecEntry!['phone']!.dispose();
-                            _ecEntry      = null;
-                            _ecNameError  = null;
+                            _ecEntry = null;
+                            _ecNameError = null;
                             _ecPhoneError = null;
                           }),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.error.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(6),
@@ -445,8 +685,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.remove_circle_outline,
-                                    color: AppColors.error, size: 12),
+                                Icon(
+                                  Icons.remove_circle_outline,
+                                  color: AppColors.error,
+                                  size: 12,
+                                ),
                                 SizedBox(width: 3),
                                 Text(
                                   'Supprimer',
@@ -465,10 +708,13 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   ),
 
                   // Name field
-                  _field('NOM', _ecEntry!['name']!,
-                      errorOverride: _ecNameError,
-                      onChangedOverride: (_) =>
-                          setState(() => _ecNameError = null)),
+                  _field(
+                    'NOM',
+                    _ecEntry!['name']!,
+                    errorOverride: _ecNameError,
+                    onChangedOverride: (_) =>
+                        setState(() => _ecNameError = null),
+                  ),
 
                   // Phone field with validation error display
                   _fieldWithError(
@@ -485,10 +731,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                     child: GestureDetector(
                       onTap: () => setState(() {
                         _ecEntry = {
-                          'name':  TextEditingController(),
+                          'name': TextEditingController(),
                           'phone': TextEditingController(),
                         };
-                        _ecNameError  = null;
+                        _ecNameError = null;
                         _ecPhoneError = null;
                       }),
                       child: Container(
@@ -505,8 +751,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.add_circle_outline,
-                                color: AppColors.primary, size: 18),
+                            Icon(
+                              Icons.add_circle_outline,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
                             SizedBox(width: 8),
                             Text(
                               'Ajouter un contact d\'urgence',
@@ -524,8 +773,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 ],
 
                 // ── Informations médicales ─────────────────────────────────
-                _section(Icons.monitor_heart_outlined,
-                    'Informations médicales'),
+                _section(
+                  Icons.monitor_heart_outlined,
+                  'Informations médicales',
+                ),
                 _field('ALLERGIES', _allergiesCtrl),
                 _field('MALADIES CHRONIQUES', _chronicCtrl),
                 _field('MÉDICAMENTS ACTUELS', _medsCtrl),
@@ -541,8 +792,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             left: 20,
             right: 20,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(14),
@@ -574,30 +824,38 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
           // ── Save button ────────────────────────────────────────────────
           Positioned(
-            bottom: 20, left: 20, right: 20,
+            bottom: 20,
+            left: 20,
+            right: 20,
             child: ElevatedButton.icon(
               onPressed: _saving ? null : _save,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                disabledBackgroundColor:
-                    AppColors.primary.withValues(alpha: 0.6),
+                disabledBackgroundColor: AppColors.primary.withValues(
+                  alpha: 0.6,
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               icon: _saving
                   ? const SizedBox(
-                      width: 18, height: 18,
+                      width: 18,
+                      height: 18,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2),
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
-                  : const Icon(Icons.save_alt_rounded,
-                      color: Colors.white, size: 20),
+                  : const Icon(
+                      Icons.save_alt_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
               label: Text(
-                _saving
-                    ? 'Enregistrement...'
-                    : 'Enregistrer les Modifications',
+                _saving ? 'Enregistrement...' : 'Enregistrer les Modifications',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
@@ -616,108 +874,121 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   PreferredSizeWidget _appBar() => AppBar(
-        backgroundColor: const Color(0xFFF4FBF8),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppColors.textDark, size: 18),
-          onPressed: () => Navigator.pop(context),
+    backgroundColor: const Color(0xFFF4FBF8),
+    elevation: 0,
+    leading: IconButton(
+      icon: const Icon(
+        Icons.arrow_back_ios_new_rounded,
+        color: AppColors.textDark,
+        size: 18,
+      ),
+      onPressed: () => Navigator.pop(context),
+    ),
+    title: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: const [
+        Text(
+          'Informations Personnelles',
+          style: TextStyle(
+            color: AppColors.textDark,
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+          ),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Informations Personnelles',
-              style: TextStyle(
-                color: AppColors.textDark,
-                fontWeight: FontWeight.w700,
-                fontSize: 17,
-              ),
-            ),
-            Text(
-              'Modifier les détails de votre profil',
-              style: TextStyle(color: AppColors.primary, fontSize: 11),
-            ),
-          ],
+        Text(
+          'Modifier les détails de votre profil',
+          style: TextStyle(color: AppColors.primary, fontSize: 11),
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _avatarPicker() => GestureDetector(
-        onTap: _pickImage,
-        child: Column(
+    onTap: _pickImage,
+    child: Column(
+      children: [
+        Stack(
           children: [
-            Stack(
-              children: [
-                Container(
-                  width: 100, height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary, width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.2),
-                        blurRadius: 14,
-                        spreadRadius: 2,
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primary, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    blurRadius: 14,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child:
+                    _profileImagePath != null &&
+                        File(_profileImagePath!).existsSync()
+                    ? Image.file(File(_profileImagePath!), fit: BoxFit.cover)
+                    : Container(
+                        color: AppColors.primaryLight,
+                        child: const Icon(
+                          Icons.person,
+                          size: 50,
+                          color: AppColors.primary,
+                        ),
                       ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: _profileImagePath != null &&
-                            File(_profileImagePath!).existsSync()
-                        ? Image.file(File(_profileImagePath!),
-                            fit: BoxFit.cover)
-                        : Container(
-                            color: AppColors.primaryLight,
-                            child: const Icon(Icons.person,
-                                size: 50, color: AppColors.primary),
-                          ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0, right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.camera_alt_rounded,
-                        color: Colors.white, size: 15),
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Appuyez pour changer de photo',
-              style: TextStyle(color: AppColors.textGrey, fontSize: 12),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(7),
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.camera_alt_rounded,
+                  color: Colors.white,
+                  size: 15,
+                ),
+              ),
             ),
           ],
         ),
-      );
+        const SizedBox(height: 8),
+        const Text(
+          'Appuyez pour changer de photo',
+          style: TextStyle(color: AppColors.textGrey, fontSize: 12),
+        ),
+      ],
+    ),
+  );
 
   Widget _section(IconData icon, String title) => Padding(
-        padding: const EdgeInsets.only(top: 22, bottom: 12),
-        child: Row(children: [
-          Icon(icon, color: AppColors.primary, size: 17),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textDark,
-            ),
+    padding: const EdgeInsets.only(top: 22, bottom: 12),
+    child: Row(
+      children: [
+        Icon(icon, color: AppColors.primary, size: 17),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Divider(
-              color: AppColors.primary.withValues(alpha: 0.25),
-              thickness: 1,
-            ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Divider(
+            color: AppColors.primary.withValues(alpha: 0.25),
+            thickness: 1,
           ),
-        ]),
-      );
+        ),
+      ],
+    ),
+  );
 
   // Standard field — optionally override error/onChanged for ec fields
   Widget _field(
@@ -726,31 +997,30 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     IconData? prefix,
     String? errorOverride,
     ValueChanged<String>? onChangedOverride,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textGrey,
-                letterSpacing: 0.4,
-              ),
-            ),
-            const SizedBox(height: 5),
-            _GreenFocusField(
-              controller: ctrl,
-              prefixIcon: prefix,
-              errorText: errorOverride,
-              onChanged: onChangedOverride,
-            ),
-          ],
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textGrey,
+            letterSpacing: 0.4,
+          ),
         ),
-      );
+        const SizedBox(height: 5),
+        _GreenFocusField(
+          controller: ctrl,
+          prefixIcon: prefix,
+          errorText: errorOverride,
+          onChanged: onChangedOverride,
+        ),
+      ],
+    ),
+  );
 
   // Field variant that always shows an error banner below it
   Widget _fieldWithError({
@@ -759,40 +1029,39 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     required String? errorText,
     IconData? prefix,
     ValueChanged<String>? onChanged,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textGrey,
-                letterSpacing: 0.4,
-              ),
-            ),
-            const SizedBox(height: 5),
-            _GreenFocusField(
-              controller: controller,
-              prefixIcon: prefix,
-              errorText: errorText,
-              onChanged: onChanged,
-              keyboardType: TextInputType.phone,
-            ),
-          ],
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textGrey,
+            letterSpacing: 0.4,
+          ),
         ),
-      );
+        const SizedBox(height: 5),
+        _GreenFocusField(
+          controller: controller,
+          prefixIcon: prefix,
+          errorText: errorText,
+          onChanged: onChanged,
+          keyboardType: TextInputType.phone,
+        ),
+      ],
+    ),
+  );
 
   Widget _row2(Widget a, Widget b) => Row(
-        children: [
-          Expanded(child: a),
-          const SizedBox(width: 10),
-          Expanded(child: b),
-        ],
-      );
+    children: [
+      Expanded(child: a),
+      const SizedBox(width: 10),
+      Expanded(child: b),
+    ],
+  );
 
   Widget _tappableField({
     required String label,
@@ -800,67 +1069,74 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     required String hint,
     required IconData icon,
     required VoidCallback onTap,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textGrey,
-                letterSpacing: 0.4,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textGrey,
+            letterSpacing: 0.4,
+          ),
+        ),
+        const SizedBox(height: 5),
+        GestureDetector(
+          onTap: onTap,
+          child: AbsorbPointer(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
               ),
-            ),
-            const SizedBox(height: 5),
-            GestureDetector(
-              onTap: onTap,
-              child: AbsorbPointer(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.border.withValues(alpha: 0.5),
-                    ),
+              child: TextField(
+                controller: controller,
+                style: const TextStyle(
+                  color: AppColors.textDark,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: hint,
+                  hintStyle: const TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 13,
                   ),
-                  child: TextField(
-                    controller: controller,
-                    style: const TextStyle(
-                      color: AppColors.textDark,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: hint,
-                      hintStyle: const TextStyle(
-                        color: AppColors.textGrey,
-                        fontSize: 13,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 13),
-                      border: InputBorder.none,
-                      prefixIcon:
-                          Icon(icon, color: AppColors.textGrey, size: 16),
-                      prefixIconConstraints:
-                          const BoxConstraints(minWidth: 36, minHeight: 0),
-                      suffixIcon: const Icon(Icons.arrow_drop_down,
-                          color: AppColors.border, size: 20),
-                      suffixIconConstraints:
-                          const BoxConstraints(minWidth: 36, minHeight: 0),
-                    ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 13,
+                  ),
+                  border: InputBorder.none,
+                  prefixIcon: Icon(icon, color: AppColors.textGrey, size: 16),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 0,
+                  ),
+                  suffixIcon: const Icon(
+                    Icons.arrow_drop_down,
+                    color: AppColors.border,
+                    size: 20,
+                  ),
+                  suffixIconConstraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 0,
                   ),
                 ),
               ),
             ),
-          ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -905,15 +1181,15 @@ class _GreenFocusFieldState extends State<_GreenFocusField> {
               color: hasError
                   ? AppColors.error.withValues(alpha: 0.05)
                   : _focused
-                      ? AppColors.primary.withValues(alpha: 0.07)
-                      : Colors.white,
+                  ? AppColors.primary.withValues(alpha: 0.07)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: hasError
                     ? AppColors.error.withValues(alpha: 0.6)
                     : _focused
-                        ? AppColors.primary
-                        : AppColors.border.withValues(alpha: 0.5),
+                    ? AppColors.primary
+                    : AppColors.border.withValues(alpha: 0.5),
                 width: (hasError || _focused) ? 1.5 : 1.0,
               ),
             ),
@@ -928,25 +1204,39 @@ class _GreenFocusFieldState extends State<_GreenFocusField> {
               ),
               decoration: InputDecoration(
                 isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 13,
+                ),
                 border: InputBorder.none,
                 prefixIcon: widget.prefixIcon != null
-                    ? Icon(widget.prefixIcon,
+                    ? Icon(
+                        widget.prefixIcon,
                         color: hasError
                             ? AppColors.error.withValues(alpha: 0.7)
                             : AppColors.textGrey,
-                        size: 16)
+                        size: 16,
+                      )
                     : null,
-                prefixIconConstraints:
-                    const BoxConstraints(minWidth: 36, minHeight: 0),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 36,
+                  minHeight: 0,
+                ),
                 suffixIcon: hasError
-                    ? const Icon(Icons.error_outline,
-                        color: AppColors.error, size: 16)
-                    : const Icon(Icons.edit_outlined,
-                        color: AppColors.border, size: 15),
-                suffixIconConstraints:
-                    const BoxConstraints(minWidth: 36, minHeight: 0),
+                    ? const Icon(
+                        Icons.error_outline,
+                        color: AppColors.error,
+                        size: 16,
+                      )
+                    : const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.border,
+                        size: 15,
+                      ),
+                suffixIconConstraints: const BoxConstraints(
+                  minWidth: 36,
+                  minHeight: 0,
+                ),
               ),
             ),
           ),

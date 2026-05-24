@@ -8,13 +8,12 @@ import 'storage_helper.dart';
 
 class ApiClient {
 
- //static const baseUrl = 'http://192.168.30.54:5000/api'; 
-  static const baseUrl = 'http://10.74.101.26:5000/api'; 
+  static const baseUrl = 'http://172.31.1.26:5000/api';  //same wifi in phone and pc
 
  
 
   // Increased timeout — 30s for slow local networks
-  static const Duration _timeout = Duration(seconds: 30);
+  static const Duration _timeout = Duration(seconds: 20);
 
   static Future<Map<String, String>> _headers({bool auth = true}) async {
     final h = <String, String>{

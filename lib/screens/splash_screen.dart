@@ -8,7 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/storage_helper.dart';
-import '../widgets/healio_logo.dart';
+import '../widgets/logo.dart';
 import '../config/app_colors.dart';
 import 'main_screen.dart';
 import 'sign_in_screen.dart';
@@ -63,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            HealioLogo(),
+            Logo(),
             SizedBox(height: 16),
             Text('Healio',
                 style: TextStyle(

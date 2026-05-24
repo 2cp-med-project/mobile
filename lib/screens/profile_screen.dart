@@ -12,6 +12,9 @@ import '../widgets/background.dart';
 import 'personal_info_screen.dart';
 import 'security_screen.dart';
 import 'sign_in_screen.dart';
+import '../services/auth_service.dart';
+import '../services/patient_service.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -38,38 +41,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUser();
   }
 
-  Future<void> _loadUser() async {
-    final prefs = await SharedPreferences.getInstance();
+Future<void> _loadUser() async {
+  final prefs = await SharedPreferences.getInstance();
 
-    // Core — StorageHelper keys
-    final nom    = await StorageHelper.getNom()    ?? '';
-    final prenom = await StorageHelper.getPrenom() ?? '';
+  final user = await PatientService.getProfile();
 
-    // Step 4 key
-    final patientId = prefs.getString('patient_id') ?? '';
+  if (user == null) return;
 
-    // Step 4 emergency contacts JSON
-    final raw = prefs.getString('emergency_contacts');
-    List<Map<String, String>> contacts = [];
-    if (raw != null) {
-      final list = List<Map<String, dynamic>>.from(jsonDecode(raw));
-      contacts = list.map((e) => {
-        'name':  e['name']  as String? ?? '',
-        'phone': e['phone'] as String? ?? '',
-      }).toList();
-    }
+  // emergency contacts
+  final contacts =
+      (user['emergencyContacts'] as List?)
+              ?.map(
+                (e) => {
+                  'name': e['name']?.toString() ?? '',
+                  'phone': e['phone']?.toString() ?? '',
+                },
+              )
+              .toList() ??
+          [];
 
-    // Profile image — set from personal_info_screen
-    final imagePath = prefs.getString('profile_image_path');
+  setState(() {
+    _nom = user['lastName'] ?? '';
 
-    setState(() {
-      _nom               = nom;
-      _prenom            = prenom;
-      _patientId         = patientId;
-      _emergencyContacts = contacts;
-      _imagePath         = imagePath;
-    });
-  }
+    _prenom = user['firstName'] ?? '';
+
+    _patientId = user['_id'] ?? '';
+
+    _emergencyContacts =
+        List<Map<String, String>>.from(contacts);
+
+    // avatar stays local
+    _imagePath =
+        prefs.getString('profile_image_path');
+  });
+}
 
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(

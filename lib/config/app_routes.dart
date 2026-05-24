@@ -10,7 +10,7 @@ import '../screens/forgot_password_screen.dart';
 import '../screens/main_screen.dart';
 
 class AppRoutes {
-  // ── Route names ────────────────────────────────────────────────────────────
+  // ── Route names 
   static const splash        = '/';
   static const signIn        = '/sign-in';
   static const signUp        = '/sign-up';
@@ -21,7 +21,7 @@ class AppRoutes {
   static const forgotPassword = '/forgot-password';
   static const home          = '/home';
 
-  // ── Route map ──────────────────────────────────────────────────────────────
+  // ── Route map 
   static Map<String, WidgetBuilder> get routes => {
     splash:         (_) => const SplashScreen(),
     signIn:         (_) => const SignInScreen(),
