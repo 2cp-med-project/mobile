@@ -9,6 +9,8 @@ import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import 'sign_up_step6_screen.dart';
 import '../config/validators.dart';
+import '../services/auth_service.dart';
+import 'otp_screen.dart';
 
 class SignUpStep5Screen extends StatefulWidget {
   const SignUpStep5Screen({super.key});
@@ -24,7 +26,7 @@ class _SignUpStep5ScreenState extends State<SignUpStep5Screen> {
   bool    _confirmVisible = false; // ← eye toggle for confirm
   String? _pwError;
   String? _confirmError;
-
+ bool    _isLoading = false; // for showing a loading indicator during OTP request
   @override
   void dispose() {
     _pwCtrl.dispose();
@@ -33,22 +35,49 @@ class _SignUpStep5ScreenState extends State<SignUpStep5Screen> {
   }
 
   Future<void> _onSuivant() async {
-    setState(() {
-      _pwError      = Validators.password(_pwCtrl.text);
-      _confirmError = Validators.confirmPassword(_confirmCtrl.text, _pwCtrl.text);
-    });
-    if (_pwError != null || _confirmError != null) return;
+  // 1. Validate password fields
+  setState(() {
+    _pwError = Validators.password(_pwCtrl.text);
+    _confirmError = Validators.confirmPassword(_confirmCtrl.text, _pwCtrl.text);
+  });
+  if (_pwError != null || _confirmError != null) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('_temp_password', _pwCtrl.text);
+  // 2. Save password temporarily
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('_temp_password', _pwCtrl.text);
 
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-          builder: (_) => const SignUpStep6Screen(isEmail: false)),
-    );
+  // 3. Retrieve stored phone number (should exist from step 3)
+  final phone = prefs.getString('phone');
+  if (phone == null || phone.isEmpty) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Numéro de téléphone introuvable. Veuillez recommencer.')),
+      );
+    }
+    return;
   }
+
+  // 4. Request OTP before navigating
+  setState(() => _isLoading = true);   // you need to add a bool _isLoading field
+  final error = await AuthService.requestOtp(phone, false);
+  if (!mounted) return;
+  setState(() => _isLoading = false);
+
+  if (error != null) {
+    // Show error and stay on current screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error)),
+    );
+    return;
+  }
+
+  // 5. Success: navigate to OTP screen
+  if (!mounted) return;
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const OtpScreen()),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -137,6 +166,7 @@ class _SignUpStep5ScreenState extends State<SignUpStep5Screen> {
                     width: 140,
                     child: AppButton(
                       label: 'Suivant',
+                      isLoading: _isLoading,
                       borderRadius: 31,
                       onPressed: _onSuivant,
                     ),

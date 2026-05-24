@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../screens/demandes_screen.dart';
 import '../config/app_routes.dart';
 import '../config/storage_helper.dart';
-
+import 'auth_service.dart';
 class NotificationService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -28,9 +28,16 @@ class NotificationService {
     debugPrint('✅ FCM Token: $token');
     
     // Écouter le rafraîchissement du token
-    _messaging.onTokenRefresh.listen((newToken) {
+    _messaging.onTokenRefresh.listen((newToken) async {
       debugPrint('🔄 Token refreshed: $newToken');
-      // TODO: Envoyer le nouveau token à ton backend
+    if (await StorageHelper.isLoggedIn()) {
+  // 👈 SEND NEW TOKEN TO BACKEND
+  await AuthService.registerFCMTokenToBackend(newToken);
+} else {
+  // Call the function directly through your StorageHelper class!
+  await StorageHelper.saveFcmToken(newToken); 
+}
+      
     });
 
     // ─── Gestion des messages ─────────────────────────────────────────────

@@ -13,6 +13,10 @@ class Endpoints {
   static const changePassword = '/auth/change-password'; // POST
 
   // ── Users 
+  //notifications
+  static const registerFcmToken = '/notifications/register-fcmtoken'; // POST (Bearer)
+ static const sendpatientresponse = '/notifications/patient-response'; // POST (Bearer)
+  // ── Users ─────────────────────────────────────────────────────────────────
   static const me          = '/users/me';          // GET / PATCH (Bearer)
   static String patient(String id) => '/users/patient/$id'; // GET (doctor)
   static String doctor(String id)  => '/users/doctor/$id';  // GET
@@ -38,4 +42,15 @@ static String chatbotById(String id) =>
     '/chatbot/$id';
 
 
-}
+
+  //appointment 
+  static const String myAppointments = '/appointment/my';
+  static const String addAppointment = '/appointment/add';
+  //review
+   static String addReview(String doctorId) => '/review/doctor/$doctorId/submit-review';
+  static String getDoctorReviews(String doctorId) => '/review/doctor/$doctorId/get-reviews';
+  
+ 
+  
+  
+  }

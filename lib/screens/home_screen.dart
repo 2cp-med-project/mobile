@@ -352,7 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
           '${appt.date.month.toString().padLeft(2, '0')}/'
           '${appt.date.year}';
     }
-    return '${appt.doctorName} - $dayLabel, ${appt.time}';
+    return '${appt.doctername} - $dayLabel, ${appt.time}';
   }
 
   // ── Quick Access Cards ───────────────────────────────────────────────────────

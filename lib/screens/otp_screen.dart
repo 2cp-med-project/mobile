@@ -1,8 +1,8 @@
 // screens/otp_screen.dart
-// FINAL FIX: OTP screen now triggers REGISTER properly
-
+// Phone‑only OTP verification. No email/phone toggle.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/app_button.dart';
 import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
@@ -18,26 +18,36 @@ class OtpScreen extends StatefulWidget {
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  bool _isEmail = true;
-
   final List<TextEditingController> _controllers =
-      List.generate(4, (_) => TextEditingController());
-
+      List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes =
-      List.generate(4, (_) => FocusNode());
+      List.generate(6, (_) => FocusNode());
 
   String? _otpError;
   bool _isLoading = false;
+  String? _phoneNumber;
 
   @override
-  void dispose() {
-    for (final c in _controllers) c.dispose();
-    for (final f in _focusNodes) f.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadPhoneNumber();
+  }
+
+  Future<void> _loadPhoneNumber() async {
+    final prefs = await SharedPreferences.getInstance();
+    final phone = prefs.getString('phone');
+    setState(() {
+      _phoneNumber = phone;
+    });
+    if (phone == null || phone.isEmpty) {
+      setState(() {
+        _otpError = 'Numéro de téléphone introuvable. Veuillez recommencer.';
+      });
+    }
   }
 
   void _onDigitChanged(String value, int index) {
-    if (value.length == 1 && index < 3) {
+    if (value.length == 1 && index < 5) {
       _focusNodes[index + 1].requestFocus();
     }
     if (value.isEmpty && index > 0) {
@@ -46,57 +56,70 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => _otpError = null);
   }
 
-  void _toggleMethod() {
-    setState(() {
-      _isEmail = !_isEmail;
-      for (final c in _controllers) c.clear();
-      _otpError = null;
-    });
+  void _onResendPressed() async {
+    if (_phoneNumber == null || !mounted) return;
+    final error = await AuthService.requestOtp(_phoneNumber!, false);
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nouveau code envoyé')),
+      );
+    }
   }
 
-  void _onResendPressed() {
-    print("📨 RESEND OTP CLICKED");
-  }
-
-  // 🔥 MAIN FIXED FUNCTION
   void _onSuivantePressed() async {
-    print("\n════════ OTP SUBMIT ════════");
-
-    final code = _controllers.map((c) => c.text).join();
-
-    print("🔐 OTP CODE: $code");
-
-    if (code.length < 4) {
-      setState(() => _otpError = 'Entrez le code complet');
+    if (_phoneNumber == null) {
+      setState(() => _otpError = 'Numéro non chargé. Réessayez.');
       return;
     }
 
-    setState(() => _isLoading = true);
+    final code = _controllers.map((c) => c.text).join();
+    if (code.length != 6) {
+      setState(() => _otpError = 'Entrez le code complet (6 chiffres)');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _otpError = null;
+    });
 
     try {
-      print("🚀 START REGISTER FROM OTP SCREEN");
+      final verifyError = await AuthService.verifyOtp(code, _phoneNumber!);
+      if (verifyError != null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _otpError = verifyError;
+          });
+        }
+        return;
+      }
 
-      final result = await AuthService.register();
+      final registerError = await AuthService.register();
 
-      print("📡 REGISTER RESULT: $result");
-
+      if (!mounted) return;
       setState(() => _isLoading = false);
 
-      if (result == null) {
-        print("✅ USER CREATED SUCCESSFULLY");
-
-        Navigator.push(
+      if (registerError == null) {
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const FormuleScreen()),
         );
       } else {
-        print("❌ REGISTER FAILED: $result");
-        setState(() => _otpError = result);
+        setState(() => _otpError = registerError);
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      print("🔥 EXCEPTION: $e");
-      setState(() => _otpError = "Erreur serveur");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _otpError = 'Erreur serveur';
+        });
+      }
     }
   }
 
@@ -107,7 +130,6 @@ class _OtpScreenState extends State<OtpScreen> {
       body: Stack(
         children: [
           const SignupBubbles(),
-
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -116,7 +138,6 @@ class _OtpScreenState extends State<OtpScreen> {
                   const SizedBox(height: 45),
                   const HealioLogo(),
                   const SizedBox(height: 50),
-
                   Text(
                     'Pour vérification',
                     style: TextStyle(
@@ -125,51 +146,30 @@ class _OtpScreenState extends State<OtpScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-
                   const SizedBox(height: 10),
-
-                  Text(
-                    _isEmail
-                        ? 'Saisissez le code reçu par e-mail'
-                        : 'Saisissez le code reçu par téléphone',
+                  const Text(
+                    'Saisissez le code reçu par téléphone',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12),
+                    style: TextStyle(fontSize: 12),
                   ),
-
                   const SizedBox(height: 36),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(4, _buildOtpBox),
+                    children: List.generate(6, _buildOtpBox),
                   ),
-
                   if (_otpError != null) ...[
                     const SizedBox(height: 10),
                     Text(
                       _otpError!,
-                      style: TextStyle(color: Colors.red),
+                      style: const TextStyle(color: Colors.red),
                     ),
                   ],
-
                   const SizedBox(height: 30),
-
                   GestureDetector(
                     onTap: _onResendPressed,
                     child: const Text("Renvoyer"),
                   ),
-
-                  GestureDetector(
-                    onTap: _toggleMethod,
-                    child: Text(
-                      _isEmail
-                          ? "Utiliser téléphone"
-                          : "Utiliser e-mail",
-                      style: TextStyle(color: AppColors.primary),
-                    ),
-                  ),
-
                   const SizedBox(height: 120),
-
                   SizedBox(
                     width: 140,
                     child: AppButton(
@@ -190,9 +190,9 @@ class _OtpScreenState extends State<OtpScreen> {
 
   Widget _buildOtpBox(int index) {
     return Container(
-      width: 52,
+      width: 45,        // smaller width to fit 6 boxes
       height: 52,
-      margin: const EdgeInsets.symmetric(horizontal: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
       child: TextField(
         controller: _controllers[index],
         focusNode: _focusNodes[index],

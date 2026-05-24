@@ -64,8 +64,9 @@ dev_dependencies:
 # included with your application, so that you can use the icons in
 # the material Icons class.
 flutter:
-  uses-material-design: true
+    uses-material-design: true
 
+<<<<<<< HEAD
   assets:
     - assets/images/logo.svg
     - assets/images/loginIcon.svg
@@ -86,6 +87,26 @@ flutter:
     - assets/icons/message.svg
     - assets/icons/ai.svg
     - assets/icons/file.svg
+=======
+    assets:
+      - assets/images/logo.svg
+      - assets/images/loginIcon.svg
+      - assets/images/loginIcon2.svg
+      - assets/images/loginIcon3.svg
+      - assets/images/backgroundLogo.svg
+      - assets/images/cardDesign.svg
+      - assets/images/upBlur.svg
+      - assets/icons/home.svg
+      - assets/icons/calendar.svg
+      - assets/icons/chat.svg
+      - assets/icons/card.svg
+      - assets/icons/dossier.svg
+      - assets/icons/profile.svg
+      - assets/icons/star.svg
+      - assets/icons/message.svg
+      - assets/icons/ai.svg
+      - assets/icons/file.svg
+>>>>>>> e3f67ad (the integrartion of otp appointment where i changed the location to doctername and get docters)
 
 
   # To add assets to your application, add an assets section, like this:
