@@ -1,157 +1,324 @@
-// config/api_client.dart
-// Central HTTP client — all requests go through here
-
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+
 import 'storage_helper.dart';
+import 'api_endpoints.dart';
 
 class ApiClient {
+  static const baseUrl =
+      'http://10.151.140.26:5000/api';
 
-  static const baseUrl = 'http://172.31.1.26:5000/api';  //same wifi in phone and pc
+  static const Duration _timeout =
+      Duration(seconds: 20);
 
- 
+  //  Headers 
 
-  // Increased timeout — 30s for slow local networks
-  static const Duration _timeout = Duration(seconds: 20);
-
-  static Future<Map<String, String>> _headers({bool auth = true}) async {
+  static Future<Map<String, String>> _headers({
+    bool auth = true,
+  }) async {
     final h = <String, String>{
       'Content-Type': 'application/json',
-      'Accept':       'application/json',
+      'Accept': 'application/json',
     };
+
     if (auth) {
-      final token = await StorageHelper.getToken();
-      if (token != null) h['Authorization'] = 'Bearer $token';
+      final token =
+          await StorageHelper.getToken();
+
+      if (token != null) {
+        h['Authorization'] =
+            'Bearer $token';
+      }
     }
+
     return h;
   }
 
-  static Future<ApiResponse> get(String path) async {
+  //  Refresh token 
+
+  static Future<bool> _refreshAccessToken() async {
     try {
+      final refreshToken =
+          await StorageHelper
+              .getRefreshToken();
+
+      if (refreshToken == null) {
+        return false;
+      }
+
       final res = await http
-          .get(Uri.parse('$baseUrl$path'), headers: await _headers())
+          .post(
+            Uri.parse(
+              '$baseUrl${Endpoints.refreshToken}',
+            ),
+            headers: {
+              'Content-Type':
+                  'application/json',
+              'Accept':
+                  'application/json',
+            },
+            body: jsonEncode({
+              'refreshToken':
+                  refreshToken,
+            }),
+          )
           .timeout(_timeout);
-      return _handle(res);
-    } catch (e) {
-      return ApiResponse.networkError(_friendlyError(e));
+
+      if (res.statusCode >= 200 &&
+          res.statusCode < 300) {
+        final data =
+            jsonDecode(res.body);
+
+        // adapt field name if backend differs
+        final newToken =
+            data['token'] ??
+            data['accessToken'];
+
+        if (newToken != null) {
+          await StorageHelper.saveToken(
+            newToken,
+          );
+
+          return true;
+        }
+      }
+
+      return false;
+    } catch (_) {
+      return false;
     }
   }
+
+  //  Request wrapper 
+
+  static Future<ApiResponse>
+      _sendWithRetry(
+    Future<http.Response> Function()
+        request,
+  ) async {
+    try {
+      var response = await request()
+          .timeout(_timeout);
+
+      // access token expired
+      if (response.statusCode == 401) {
+        final refreshed =
+            await _refreshAccessToken();
+
+        if (refreshed) {
+          response = await request()
+              .timeout(_timeout);
+        } else {
+          await StorageHelper.clear();
+        }
+      }
+
+      return _handle(response);
+    } catch (e) {
+      return ApiResponse.networkError(
+        _friendlyError(e),
+      );
+    }
+  }
+
+  //  GET 
+
+  static Future<ApiResponse> get(
+    String path,
+  ) async {
+    return _sendWithRetry(
+      () async => http.get(
+        Uri.parse('$baseUrl$path'),
+        headers: await _headers(),
+      ),
+    );
+  }
+
+  //  POST 
 
   static Future<ApiResponse> post(
     String path,
     Map<String, dynamic> body, {
     bool auth = true,
   }) async {
-    try {
-      final res = await http
-          .post(
-            Uri.parse('$baseUrl$path'),
-            headers: await _headers(auth: auth),
-            body:    jsonEncode(body),
-          )
-          .timeout(_timeout);
-      return _handle(res);
-    } catch (e) {
-      return ApiResponse.networkError(_friendlyError(e));
-    }
+    return _sendWithRetry(
+      () async => http.post(
+        Uri.parse('$baseUrl$path'),
+        headers:
+            await _headers(auth: auth),
+        body: jsonEncode(body),
+      ),
+    );
   }
+
+  //  PATCH 
 
   static Future<ApiResponse> patch(
-      String path, Map<String, dynamic> body) async {
-    try {
-      final res = await http
-          .patch(Uri.parse('$baseUrl$path'),
-              headers: await _headers(), body: jsonEncode(body))
-          .timeout(_timeout);
-      return _handle(res);
-    } catch (e) {
-      return ApiResponse.networkError(_friendlyError(e));
-    }
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    return _sendWithRetry(
+      () async => http.patch(
+        Uri.parse('$baseUrl$path'),
+        headers: await _headers(),
+        body: jsonEncode(body),
+      ),
+    );
   }
+
+  //  PUT 
 
   static Future<ApiResponse> put(
-      String path, Map<String, dynamic> body) async {
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    return _sendWithRetry(
+      () async => http.put(
+        Uri.parse('$baseUrl$path'),
+        headers: await _headers(),
+        body: jsonEncode(body),
+      ),
+    );
+  }
+
+  //  DELETE 
+
+  static Future<ApiResponse> delete(
+    String path,
+  ) async {
+    return _sendWithRetry(
+      () async => http.delete(
+        Uri.parse('$baseUrl$path'),
+        headers: await _headers(),
+      ),
+    );
+  }
+
+  //  Upload 
+
+  static Future<ApiResponse>
+      uploadFile(
+    String path,
+    String filePath,
+    String fieldName,
+  ) async {
     try {
-      final res = await http
-          .put(Uri.parse('$baseUrl$path'),
-              headers: await _headers(), body: jsonEncode(body))
-          .timeout(_timeout);
+      final req =
+          http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl$path'),
+      );
+
+      final token =
+          await StorageHelper.getToken();
+
+      if (token != null) {
+        req.headers[
+                'Authorization'] =
+            'Bearer $token';
+      }
+
+      req.files.add(
+        await http.MultipartFile
+            .fromPath(
+          fieldName,
+          filePath,
+        ),
+      );
+
+      final streamed =
+          await req.send();
+
+      final res =
+          await http.Response.fromStream(
+        streamed,
+      );
+
       return _handle(res);
     } catch (e) {
-      return ApiResponse.networkError(_friendlyError(e));
+      return ApiResponse.networkError(
+        _friendlyError(e),
+      );
     }
   }
 
-  static Future<ApiResponse> delete(String path) async {
-    try {
-      final res = await http
-          .delete(Uri.parse('$baseUrl$path'), headers: await _headers())
-          .timeout(_timeout);
-      return _handle(res);
-    } catch (e) {
-      return ApiResponse.networkError(_friendlyError(e));
-    }
-  }
+  //  Response parser 
 
-  static Future<ApiResponse> uploadFile(
-      String path, String filePath, String fieldName) async {
-    try {
-      final req = http.MultipartRequest(
-          'POST', Uri.parse('$baseUrl$path'));
-      final token = await StorageHelper.getToken();
-      if (token != null) req.headers['Authorization'] = 'Bearer $token';
-      req.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
-      final streamed = await req.send().timeout(_timeout);
-      final res = await http.Response.fromStream(streamed);
-      return _handle(res);
-    } catch (e) {
-      return ApiResponse.networkError(_friendlyError(e));
-    }
-  }
-
-  static ApiResponse _handle(http.Response res) {
+  static ApiResponse _handle(
+    http.Response res,
+  ) {
     dynamic parsed;
-    try { parsed = jsonDecode(res.body); } catch (_) { parsed = {}; }
-    final ok = res.statusCode >= 200 && res.statusCode < 300;
+
+    try {
+      parsed = jsonDecode(res.body);
+    } catch (_) {
+      parsed = {};
+    }
+
+    final ok =
+        res.statusCode >= 200 &&
+            res.statusCode < 300;
+
     String? errMsg;
+
     if (!ok) {
       if (parsed is Map) {
-        errMsg = parsed['message']?.toString() ??
-                 parsed['error']?.toString()   ??
-                 'Erreur ${res.statusCode}';
+        errMsg =
+            parsed['message']
+                    ?.toString() ??
+                parsed['error']
+                    ?.toString() ??
+                'Erreur ${res.statusCode}';
       } else {
-        errMsg = 'Erreur ${res.statusCode}';
+        errMsg =
+            'Erreur ${res.statusCode}';
       }
     }
+
     return ApiResponse(
-        statusCode: res.statusCode, data: parsed,
-        success: ok, error: errMsg);
+      statusCode: res.statusCode,
+      data: parsed,
+      success: ok,
+      error: errMsg,
+    );
   }
 
-  // Convert technical exceptions into readable French messages
-  static String _friendlyError(Object e) {
+  //  Friendly errors 
+
+  static String _friendlyError(
+    Object e,
+  ) {
     final msg = e.toString();
-    if (e is SocketException || msg.contains('Connection refused')) {
+
+    if (e is SocketException ||
+        msg.contains(
+            'Connection refused')) {
       return 'Impossible de joindre le serveur.\n'
           'Vérifiez que votre backend est démarré et que l\'adresse IP est correcte.';
     }
-    if (msg.contains('TimeoutException') || msg.contains('timed out')) {
+
+    if (msg.contains(
+            'TimeoutException') ||
+        msg.contains(
+            'timed out')) {
       return 'Le serveur ne répond pas.\n'
           'Vérifiez que votre téléphone et votre PC sont sur le même réseau Wi-Fi.';
     }
+
     if (e is HandshakeException) {
       return 'Erreur SSL. Utilisez http:// pour les tests locaux.';
     }
+
     return 'Erreur réseau : $msg';
   }
 }
 
 class ApiResponse {
-  final int     statusCode;
+  final int statusCode;
   final dynamic data;
   final String? error;
-  final bool    success;
+  final bool success;
 
   const ApiResponse({
     required this.statusCode,
@@ -160,7 +327,14 @@ class ApiResponse {
     this.error,
   });
 
-  factory ApiResponse.networkError(String msg) => ApiResponse(
-        statusCode: 0, data: {}, success: false,
-        error: msg);
+  factory ApiResponse.networkError(
+    String msg,
+  ) {
+    return ApiResponse(
+      statusCode: 0,
+      data: {},
+      success: false,
+      error: msg,
+    );
+  }
 }

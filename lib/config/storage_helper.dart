@@ -11,7 +11,7 @@ class StorageHelper {
     return _prefs!;
   }
 
-  // ── Core user fields ──────────────────────────────────────────────────────
+  // ── Core user fields 
   static Future<void> saveUser({
     required String nom,
     required String prenom,
@@ -31,14 +31,14 @@ class StorageHelper {
     if (patientId    != null) await p.setString('patient_id',    patientId);
   }
 
-  // ── Getters ───────────────────────────────────────────────────────────────
+  // ── Getters 
   static Future<String?> getNom()          async => (await _getPrefs()).getString('nom');
   static Future<String?> getPrenom()       async => (await _getPrefs()).getString('prenom');
   static Future<String?> getToken()        async => (await _getPrefs()).getString('token');
   static Future<String?> getRefreshToken() async => (await _getPrefs()).getString('refresh_token');
   static Future<String?> getPatientId()    async => (await _getPrefs()).getString('patient_id');
 
-  // ── Token management ──────────────────────────────────────────────────────
+  // ── Token management 
   static Future<void> saveToken(String token) async {
     final p = await _getPrefs();
     await p.setString('token', token);

@@ -11,9 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_colors.dart';
 import '../widgets/top_bubbles.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  MODEL
-// ─────────────────────────────────────────────────────────────────────────────
 class Appointment {
   final String id;
   final String doctorName;
@@ -62,9 +60,7 @@ class Appointment {
       );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  STORAGE
-// ─────────────────────────────────────────────────────────────────────────────
 class _AppointmentStorage {
   static const _key = 'appointments';
 
@@ -118,9 +114,7 @@ class _AppointmentStorage {
       ];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  MAIN SCREEN
-// ─────────────────────────────────────────────────────────────────────────────
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({super.key});
 
@@ -251,7 +245,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  // ── Top row ─────────────────────────────────────────────────────────────
+  // ── Top row 
   Widget _buildTopRow() {
     return Row(
       children: [
@@ -284,7 +278,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  // ── Week strip ───────────────────────────────────────────────────────────
+  // ── Week strip 
   Widget _buildWeekStrip() {
     final now   = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -391,7 +385,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  // ── Section title ────────────────────────────────────────────────────────
+  // ── Section title 
   Widget _sectionTitle(String text) => Text(
         text,
         style: const TextStyle(
@@ -400,7 +394,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             color: AppColors.textDark),
       );
 
-  // ── Appointment card ─────────────────────────────────────────────────────
+  // ── Appointment card 
   Widget _buildCard(Appointment a) {
     final months = [
       '', 'Jan', 'Fév', 'Mars', 'Avr', 'Mai', 'Juin',
@@ -539,7 +533,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             style: const TextStyle(color: AppColors.textGrey, fontSize: 13)),
       );
 
-  // ── Open add modal ───────────────────────────────────────────────────────
+  // ── Open add modal 
   void _openAddModal() {
     showGeneralDialog(
       context: context,
@@ -583,9 +577,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  ADD APPOINTMENT MODAL
-// ─────────────────────────────────────────────────────────────────────────────
 class _AddAppointmentModal extends StatefulWidget {
   final void Function(Appointment) onSave;
   const _AddAppointmentModal({required this.onSave});
@@ -717,7 +709,7 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Header ───────────────────────────────────────────────
+                // ── Header 
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
                   child: Row(
@@ -743,7 +735,7 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
                 ),
                 const SizedBox(height: 16),
 
-                // ── Scrollable fields ─────────────────────────────────────
+                // ── Scrollable fields 
                 Flexible(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -936,9 +928,8 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  TYPE DROPDOWN
-// ─────────────────────────────────────────────────────────────────────────────
 class _TypeDropdown extends StatelessWidget {
   final List<String> types;
   final String? selected;
@@ -1056,9 +1047,7 @@ class _TypeDropdown extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  INLINE CALENDAR
-// ─────────────────────────────────────────────────────────────────────────────
 class _InlineCalendar extends StatefulWidget {
   final DateTime selected;
   final void Function(DateTime) onSelect;

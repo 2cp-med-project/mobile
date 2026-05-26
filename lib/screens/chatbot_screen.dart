@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import '../config/storage_helper.dart';
+import '../services/chatbot_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -23,14 +24,35 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   bool _isPanelOpen = false;
   bool _isDeleteMode = false;
   bool _isLoading = false;
-  String _currentChatId = '1';
+  String _currentChatId = '';
   String _prenom = '';
 
   @override
   void initState() {
     super.initState();
-    _initializeChatMessages();
     _loadPrenom();
+    _loadHistories();
+  }
+
+  Future<void> _loadHistories() async {
+    try {
+      final chats = await ChatbotService.getChats();
+
+      setState(() {
+        _histories.clear();
+
+        _histories.addAll(
+          chats.map(
+            (e) => _ChatHistory(
+              id: e['_id'].toString(),
+              title: e['title'] ?? 'Nouvelle discussion',
+            ),
+          ),
+        );
+      });
+    } catch (e) {
+      debugPrint('Failed loading chats: $e');
+    }
   }
 
   Future<void> _loadPrenom() async {
@@ -38,54 +60,10 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     setState(() => _prenom = prenom ?? '');
   }
 
-  // ── Chat histories
-  // Each chat has an id, a title, and a list of messages
-  final List<_ChatHistory> _histories = [
-    _ChatHistory(id: '1', title: 'Consultation cardiologue'),
-    _ChatHistory(id: '2', title: 'Douleur poitrine'),
-    _ChatHistory(id: '3', title: 'Analyse sanguine'),
-    _ChatHistory(id: '4', title: 'Allergie'),
-    _ChatHistory(id: '5', title: 'Discussion 05'),
-  ];
+  final List<_ChatHistory> _histories = [];
 
   // ── Messages for current chat
-  late final Map<String, List<_Message>> _chatMessages;
-
-  void _initializeChatMessages() {
-    _chatMessages = {
-      '1': [
-        _Message(
-          text:
-              'Bonjour $_prenom ! 👋 Je suis votre assistante santé personnelle. Comment puis-je vous aider aujourd\'hui ?',
-          isUser: false,
-          time: '8h00',
-        ),
-        _Message(
-          text: 'Quand est mon prochain rendez-vous ?',
-          isUser: true,
-          time: '8h35',
-        ),
-        _Message(
-          text:
-              'Votre prochain rendez-vous avec le Dr.Merazi (cardiologie) est demain, le 12 mars, à 10h30. N\'oubliez pas d\'être à jeun pendant 4 heures avant ! 🥛',
-          isUser: false,
-          time: '8h38',
-        ),
-        _Message(
-          text:
-              'Puis-je consulter les résultats de ma dernière analyse sanguine ?',
-          isUser: true,
-          time: '8h40',
-        ),
-        _Message(
-          text:
-              'Votre bilan sanguin du 22 février présente des valeurs normales. Hémoglobine : 13,8 g/dL, cholestérol : 178 mg/dL, glucose :',
-          isUser: false,
-          time: '8h41',
-        ),
-      ],
-    };
-  }
+  final Map<String, List<_Message>> _chatMessages = {};
 
   // ── Selected chats for deletion
   final Set<String> _selectedForDelete = {};
@@ -108,36 +86,74 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   }
 
   // ── Send message
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
 
+    _inputCtrl.clear();
+
     setState(() {
       _chatMessages.putIfAbsent(_currentChatId, () => []);
+
       _chatMessages[_currentChatId]!.add(
         _Message(text: text, isUser: true, time: _nowTime()),
       );
-      _inputCtrl.clear();
+
       _isLoading = true;
     });
 
     _scrollToBottom();
 
-    // TODO: call LLM API from backend
-    // final response = await ChatbotService.sendMessage(text, _currentChatId);
-    // setState(() {
-    //   _chatMessages[_currentChatId]!.add(
-    //     _Message(text: response, isUser: false, time: _nowTime()),
-    //   );
-    //   _isLoading = false;
-    // });
+    try {
+      Map<String, dynamic> response;
 
-    // Simulated response delay (remove when backend ready)
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+      // first message -> create thread
+      if (_currentChatId.isEmpty) {
+        response = await ChatbotService.startChat(text);
+
+        final threadId = response['thread_id'].toString();
+
+        _currentChatId = threadId;
+
+        _histories.insert(
+          0,
+          _ChatHistory(
+            id: threadId,
+            title: text.length > 20 ? text.substring(0, 20) : text,
+          ),
+        );
+      } else {
+        response = await ChatbotService.sendMessage(
+          threadId: _currentChatId,
+          prompt: text,
+        );
+      }
+
+      final aiReply =
+          response['response'] ?? response['message'] ?? 'Pas de réponse';
+
+      setState(() {
+        _chatMessages[_currentChatId]!.add(
+          _Message(text: aiReply, isUser: false, time: _nowTime()),
+        );
+
+        _isLoading = false;
+      });
+
       _scrollToBottom();
-    });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+
+        _chatMessages[_currentChatId]!.add(
+          _Message(
+            text: 'Erreur de connexion au chatbot',
+            isUser: false,
+            time: _nowTime(),
+          ),
+        );
+      });
+    }
   }
 
   // ── Quick chip tapped
@@ -146,48 +162,58 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     _sendMessage();
   }
 
-  // ── Pick image from gallery
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery);
-    if (file == null) return;
-    // TODO: send image to backend chatbot
-    // await ChatbotService.sendImage(file.path, _currentChatId);
-  }
-
   // ── New discussion
   void _newDiscussion() {
-    final newId = DateTime.now().millisecondsSinceEpoch.toString();
     setState(() {
-      _histories.insert(
-        0,
-        _ChatHistory(id: newId, title: 'Nouvelle discussion'),
-      );
-      _chatMessages[newId] = [
-        _Message(
-          text:
-              'Bonjour ! Je suis votre assistante santé personnelle. Comment puis-je vous aider aujourd\'hui ?',
-          isUser: false,
-          time: _nowTime(),
-        ),
-      ];
-      _currentChatId = newId;
+      _currentChatId = '';
+
+      // clear input text
+      _inputCtrl.clear();
+
+      // close panel
       _isPanelOpen = false;
+
+      // stop delete mode
       _isDeleteMode = false;
+      _selectedForDelete.clear();
+
+      // stop loading if active
+      _isLoading = false;
     });
-    // TODO: await ChatbotService.createNewChat() → get real id from backend
   }
 
   // ── Load existing chat
-  void _loadChat(String id) {
+  Future<void> _loadChat(String id) async {
     setState(() {
       _currentChatId = id;
       _isPanelOpen = false;
       _isDeleteMode = false;
+      _isLoading = true;
     });
-    // TODO: load messages from backend
-    // final messages = await ChatbotService.getChatMessages(id);
-    _scrollToBottom();
+
+    try {
+      final data = await ChatbotService.getChat(id);
+
+      final messages = (data['messages'] ?? []) as List;
+
+      _chatMessages[id] = messages.map((m) {
+        return _Message(
+          text: m['content'] ?? '',
+          isUser: m['role'] == 'user',
+          time: _nowTime(),
+        );
+      }).toList();
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   // ── Toggle delete mode
@@ -219,25 +245,35 @@ class _ChatbotScreenState extends State<ChatbotScreen>
             child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
+
+              // delete from backend
+              for (final id in _selectedForDelete.toList()) {
+                try {
+                  await ChatbotService.deleteChat(id);
+                } catch (_) {}
+
+                _chatMessages.remove(id);
+              }
+
               setState(() {
                 _histories.removeWhere(
                   (h) => _selectedForDelete.contains(h.id),
                 );
-                for (final id in _selectedForDelete) {
-                  _chatMessages.remove(id);
-                }
+
+                // if current chat deleted → reset UI
                 if (_selectedForDelete.contains(_currentChatId)) {
-                  _currentChatId = _histories.isNotEmpty
-                      ? _histories.first.id
-                      : '';
+                  _currentChatId = '';
+                  _inputCtrl.clear();
                 }
+
                 _selectedForDelete.clear();
                 _isDeleteMode = false;
+                _isLoading = false;
               });
-              // TODO: await ChatbotService.deleteChats(_selectedForDelete);
             },
+
             child: const Text(
               'Supprimer',
               style: TextStyle(
@@ -252,75 +288,65 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   }
 
   void _openSOSSheet() {
-  showModalBottomSheet(
-    context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(20),
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-    ),
-    builder: (context) {
-      final List<Map<String, String>> sos = [
-        {'name': 'Pompiers / SAMU', 'number': '14'},
-        {'name': 'Police', 'number': '17'},
-        {'name': 'Gendarmerie Nationale', 'number': '1055'},
-        {'name': 'Centre Anti-Poison', 'number': '021979898'},
-      ];
+      builder: (context) {
+        final List<Map<String, String>> sos = [
+          {'name': 'Pompiers / SAMU', 'number': '14'},
+          {'name': 'Police', 'number': '17'},
+          {'name': 'Gendarmerie Nationale', 'number': '1055'},
+          {'name': 'Centre Anti-Poison', 'number': '021979898'},
+        ];
 
-      return ListView(
-        shrinkWrap: true,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              "🚨 SOS URGENCE",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+        return ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                "🚨 SOS URGENCE",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
-          ),
 
-          ...sos.map((e) {
-            return ListTile(
-              leading: const Icon(
-                Icons.phone,
-                color: Colors.red,
-              ),
+            ...sos.map((e) {
+              return ListTile(
+                leading: const Icon(Icons.phone, color: Colors.red),
 
-              title: Text(e['name']!),
+                title: Text(e['name']!),
 
-              trailing: Text(
-                e['number']!,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
+                trailing: Text(
+                  e['number']!,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
 
-              // TAP → CALL
-              onTap: () async {
-                final Uri phoneUri = Uri(
-                  scheme: 'tel',
-                  path: e['number'],
-                );
+                // TAP → CALL
+                onTap: () async {
+                  final Uri phoneUri = Uri(scheme: 'tel', path: e['number']);
 
-                try {
-                  await launchUrl(
-                    phoneUri,
-                    mode: LaunchMode.externalApplication,
-                  );
-                } catch (e) {
-                  debugPrint('Call error: $e');
-                }
-              },
-            );
-          }),
-        ],
-      );
-    },
-  );
-}
+                  try {
+                    await launchUrl(
+                      phoneUri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } catch (e) {
+                    debugPrint('Call error: $e');
+                  }
+                },
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _sendEmergencyLocation() async {
     Position position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
@@ -621,8 +647,6 @@ class _ChatbotScreenState extends State<ChatbotScreen>
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
         children: [
-
-
           // 🚨 SOS ICON (NEW)
           GestureDetector(
             onTap: _openSOSSheet,
@@ -633,16 +657,11 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                 color: Colors.red.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(
-                Icons.emergency,
-                color: Colors.red,
-                size: 20,
-              ),
+              child: const Icon(Icons.emergency, color: Colors.red, size: 20),
             ),
           ),
 
           const SizedBox(width: 8),
-
 
           // Text Field with green border when focused
           Expanded(
@@ -653,6 +672,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
               },
               child: TextField(
                 controller: _inputCtrl,
+                onChanged: (_) => setState(() {}),
                 style: const TextStyle(fontSize: 13),
                 decoration: InputDecoration(
                   hintText: 'Demander n\'importe quoi...',
@@ -684,26 +704,26 @@ class _ChatbotScreenState extends State<ChatbotScreen>
             ),
           ),
 
-
           const SizedBox(width: 8),
 
           //  Send Button (changes color on tap)
           GestureDetector(
-            onTap: _sendMessage,
-            child: Container(
+            onTap: _inputCtrl.text.trim().isEmpty ? null : _sendMessage,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: _inputCtrl.text.isEmpty
-                    ? const Color(0xFF1FAF87)
-                    : const Color(0xFFF0FBF8), // green if text exists
+                color: _inputCtrl.text.trim().isEmpty
+                    ? const Color(0xFFF0FBF8) // disabled
+                    : const Color(0xFF1FAF87), // active green
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(
                 Icons.send_rounded,
-                color: _inputCtrl.text.isEmpty
-                    ? const Color(0xFFF0FBF8)
-                    : const Color(0xFF1FAF87), // white if background green
+                color: _inputCtrl.text.trim().isEmpty
+                    ? const Color(0xFF1FAF87) // disabled
+                    : const Color(0xFFF0FBF8), // active green
                 size: 20,
               ),
             ),

@@ -3,7 +3,7 @@
 
 class Validators {
 
-  // ── Nom / Prénom ─────────────────────────────────────────────────────────
+  // ── Nom / Prénom 
   // must be more than 2 characters, letters only
   static String? name(String? value) {
     if (value == null || value.trim().isEmpty) return 'Ce champ est requis';
@@ -14,7 +14,7 @@ class Validators {
     return null;
   }
 
-  // ── Phone ────────────────────────────────────────────────────────────────
+  // ── Phone 
   // must be 9-10 digits, numbers only
   static String? phone(String? value) {
     if (value == null || value.trim().isEmpty) return 'Ce champ est requis';
@@ -24,7 +24,7 @@ class Validators {
     return null;
   }
 
-  // ── Email ────────────────────────────────────────────────────────────────
+  // ── Email 
   // must contain @ and a valid domain
   static String? email(String? value) {
     if (value == null || value.trim().isEmpty) return 'Ce champ est requis';
@@ -34,7 +34,7 @@ class Validators {
     return null;
   }
 
-  // ── Password ─────────────────────────────────────────────────────────────
+  // ── Password 
   // min 8 chars, at least 1 uppercase, 1 number, 1 special character
   static String? password(String? value) {
     if (value == null || value.isEmpty) return 'Ce champ est requis';
@@ -47,20 +47,20 @@ class Validators {
     return null;
   }
 
-  // ── Confirm password ─────────────────────────────────────────────────────
+  // ── Confirm password 
   static String? confirmPassword(String? value, String original) {
     if (value == null || value.isEmpty) return 'Ce champ est requis';
     if (value != original) return 'Les mots de passe ne correspondent pas';
     return null;
   }
 
-  // ── Required (generic) ───────────────────────────────────────────────────
+  // ── Required (generic) 
   static String? required(String? value) {
     if (value == null || value.trim().isEmpty) return 'Ce champ est requis';
     return null;
   }
 
-  // ── Date parts ───────────────────────────────────────────────────────────
+  // ── Date parts 
   static String? day(String? value) {
     if (value == null || value.trim().isEmpty) return 'Requis';
     final d = int.tryParse(value);
