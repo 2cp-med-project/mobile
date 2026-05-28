@@ -10,26 +10,43 @@ class StorageHelper {
     _prefs ??= await SharedPreferences.getInstance();
     return _prefs!;
   }
+  static Future<String?> getUserId() async =>
+    (await _getPrefs()).getString('user_id');
 
   // ── Core user fields 
-  static Future<void> saveUser({
-    required String nom,
-    required String prenom,
-    required String phone,
-    required String email,
-    String? token,
-    String? refreshToken,
-    String? patientId,
-  }) async {
-    final p = await _getPrefs();
-    await p.setString('nom',    nom);
-    await p.setString('prenom', prenom);
-    await p.setString('phone',  phone);
-    await p.setString('email',  email);
-    if (token        != null) await p.setString('token',         token);
-    if (refreshToken != null) await p.setString('refresh_token', refreshToken);
-    if (patientId    != null) await p.setString('patient_id',    patientId);
+ static Future<void> saveUser({
+  required String nom,
+  required String prenom,
+  required String phone,
+  required String email,
+  String? token,
+  String? refreshToken,
+  String? patientId,
+  String? userId, // NEW
+}) async {
+  final p = await _getPrefs();
+
+  await p.setString('nom', nom);
+  await p.setString('prenom', prenom);
+  await p.setString('phone', phone);
+  await p.setString('email', email);
+
+  if (token != null) {
+    await p.setString('token', token);
   }
+
+  if (refreshToken != null) {
+    await p.setString('refresh_token', refreshToken);
+  }
+
+  if (patientId != null) {
+    await p.setString('patient_id', patientId);
+  }
+
+  if (userId != null) {
+    await p.setString('user_id', userId);
+  }
+}
 
   // ── Getters 
   static Future<String?> getNom()          async => (await _getPrefs()).getString('nom');

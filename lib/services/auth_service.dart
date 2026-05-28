@@ -7,7 +7,6 @@ import '../config/api_endpoints.dart';
 import '../config/storage_helper.dart';
 
 class AuthService {
-
   // ─────────────────────────────────────────────
   // LOGIN
   // ─────────────────────────────────────────────
@@ -16,19 +15,12 @@ class AuthService {
     required String password,
     String role = 'patient',
   }) async {
-
-
     try {
-      final res = await ApiClient.post(
-        Endpoints.login,
-        {
-          'phone': phone,
-          'password': password,
-          'role': role,
-        },
-        auth: false,
-      );
-
+      final res = await ApiClient.post(Endpoints.login, {
+        'phone': phone,
+        'password': password,
+        'role': role,
+      }, auth: false);
 
       if (!res.success) {
         return res.error ?? 'Échec de connexion';
@@ -43,7 +35,6 @@ class AuthService {
           data['data']?['token'] ??
           '';
 
-
       if (token.toString().isEmpty) {
         return 'Token non reçu du serveur';
       }
@@ -52,18 +43,20 @@ class AuthService {
 
       final user =
           (data['user'] ?? data['data']?['user'] ?? data)
-          as Map<String, dynamic>;
-
+              as Map<String, dynamic>;
 
       await StorageHelper.saveUser(
         nom: user['lastName']?.toString() ?? '',
         prenom: user['firstName']?.toString() ?? '',
         phone: user['phone']?.toString() ?? phone,
         email: user['email']?.toString() ?? '',
+        token: user['accessToken']?.toString() ?? '',
+        refreshToken: user['refreshToken']?.toString() ?? '',
+        patientId: user['_id']?.toString() ?? '',
+        userId: user['_id']?.toString() ?? '', // ADDED THIS
       );
 
       return null;
-
     } catch (e) {
       return e.toString();
     }
@@ -73,8 +66,6 @@ class AuthService {
   // REGISTER
   // ─────────────────────────────────────────────
   static Future<String?> register() async {
-
-
     final prefs = await SharedPreferences.getInstance();
 
     final firstName = prefs.getString('prenom');
@@ -83,11 +74,10 @@ class AuthService {
     final phone = prefs.getString('phone');
     final password = prefs.getString('_temp_password');
 
-
-
     final contacts = prefs.getString('emergency_contacts');
-    final List<dynamic> contactsList =
-        contacts != null ? jsonDecode(contacts) : [];
+    final List<dynamic> contactsList = contacts != null
+        ? jsonDecode(contacts)
+        : [];
 
     final requestBody = {
       'firstName': firstName ?? '',
@@ -103,15 +93,12 @@ class AuthService {
       'emergencyContacts': contactsList,
     };
 
-
     try {
       final res = await ApiClient.post(
         Endpoints.signin,
         requestBody,
         auth: false,
       );
-
-
 
       if (!res.success) {
         return res.error ?? 'Échec de création du compte';
@@ -125,56 +112,40 @@ class AuthService {
           data['access_token'] ??
           data['data']?['token'];
 
-
       if (token != null) {
         await StorageHelper.saveToken(token.toString());
       }
 
       return null;
-
     } catch (e) {
       return e.toString();
     }
   }
 
-
   static Future<String?> verifyOtp(String code) async {
-
-    final res = await ApiClient.post(
-      Endpoints.verifyOtp,
-      {'code': code},
-    );
-
+    final res = await ApiClient.post(Endpoints.verifyOtp, {'code': code});
 
     if (!res.success) return res.error ?? 'Code incorrect';
     return null;
   }
 
   static Future<String?> resendOtp({bool isEmail = true}) async {
-
     final prefs = await SharedPreferences.getInstance();
 
-    final res = await ApiClient.post(
-      Endpoints.requestOtp,
-      {
-        'channel': isEmail ? 'email' : 'phone',
-        'email': prefs.getString('email') ?? '',
-        'phone': prefs.getString('phone') ?? '',
-      },
-      auth: false,
-    );
-
+    final res = await ApiClient.post(Endpoints.requestOtp, {
+      'channel': isEmail ? 'email' : 'phone',
+      'email': prefs.getString('email') ?? '',
+      'phone': prefs.getString('phone') ?? '',
+    }, auth: false);
 
     if (!res.success) return res.error ?? 'Échec de renvoi';
     return null;
   }
 
-
   static Future<void> logout() async {
     try {
       await ApiClient.post(Endpoints.logout, {});
-    } catch (e) {
-    }
+    } catch (e) {}
     await StorageHelper.clear();
   }
 

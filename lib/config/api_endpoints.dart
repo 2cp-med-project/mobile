@@ -19,9 +19,9 @@ class Endpoints {
   static const doctors     = '/users/doctors';     // GET paginated
 
   // ── Records (consultations = dossier medical files) 
-  static const consultation         = '/record/consultation'; // POST
-  static String consultationById(String id) => '/record/consultation/$id'; // GET / PATCH
-  static String recordsByPatient(String id) => '/record/$id'; // GET paginated
+  static const consultation         = '/records/consultation'; // POST
+  static String consultationById(String id) => '/records/consultation/$id'; // GET / PATCH
+  static String recordsByPatient(String id) => '/records/$id'; // GET paginated
 
   // ── Access (doctor ↔ patient permissions) 
   static const accessRequest        = '/access/request';          // POST (doctor)

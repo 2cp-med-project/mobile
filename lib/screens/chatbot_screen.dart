@@ -130,7 +130,13 @@ class _ChatbotScreenState extends State<ChatbotScreen>
       }
 
       final aiReply =
-          response['response'] ?? response['message'] ?? 'Pas de réponse';
+          response['response'] ??
+          response['reply'] ??
+          response['message'] ??
+          response['text'] ??
+          response['data']?['response'] ??
+          response['data']?['message'] ??
+          'Pas de réponse';
 
       setState(() {
         _chatMessages[_currentChatId]!.add(
@@ -162,23 +168,20 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     _sendMessage();
   }
 
-  // ── New discussion
   void _newDiscussion() {
     setState(() {
       _currentChatId = '';
 
-      // clear input text
+      // clear input
       _inputCtrl.clear();
 
-      // close panel
+      // close panel + exit delete mode
       _isPanelOpen = false;
-
-      // stop delete mode
       _isDeleteMode = false;
-      _selectedForDelete.clear();
-
-      // stop loading if active
       _isLoading = false;
+
+      // force empty temporary discussion
+      _chatMessages[''] = [];
     });
   }
 
