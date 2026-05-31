@@ -53,21 +53,26 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     _load();
   }
 
-Future<void> _load() async {
+ Future<void> _load() async {
   final prefs = await SharedPreferences.getInstance();
 
-  // local image only
+final userId =
+    await StorageHelper.getUserId() ?? 'guest';
+
+  // local image
   _profileImagePath =
       prefs.getString('profile_image_path');
 
-  final user = await PatientService.getProfile();
+  // backend profile
+  final user =
+      await PatientService.getProfile();
 
   if (user == null) {
     setState(() {});
     return;
   }
 
-  // identity
+  // ── Identity (always backend)
   _prenomCtrl.text =
       user['firstName'] ?? '';
 
@@ -80,26 +85,40 @@ Future<void> _load() async {
   _phoneCtrl.text =
       user['phone'] ?? '';
 
-  _lieuCtrl.text =
-      user['placeOfBirth'] ?? '';
+  // ── Local user-specific values
+  _dobCtrl.text = prefs.getString(
+        '${userId}_date_naissance',
+      ) ??
+      '';
 
-  _adresseCtrl.text =
-      user['address'] ?? '';
+  _lieuCtrl.text = prefs.getString(
+        '${userId}_lieu_naissance',
+      ) ??
+      (user['placeOfBirth'] ?? '');
 
-  // gender
+  _adresseCtrl.text = prefs.getString(
+        '${userId}_adresse',
+      ) ??
+      (user['address'] ?? '');
+
+  // gender fallback
   final gender = user['gender'];
 
-  _genreCtrl.text =
-      gender == 'male'
+  _genreCtrl.text = prefs.getString(
+        '${userId}_genre',
+      ) ??
+      (gender == 'male'
           ? 'Homme'
           : gender == 'female'
               ? 'Femme'
-              : '';
+              : '');
 
-  // date of birth
-  if (user['dateOfBirth'] != null) {
-    final date =
-        DateTime.parse(user['dateOfBirth']);
+  // ── Date of birth fallback from backend
+  if (_dobCtrl.text.isEmpty &&
+      user['dateOfBirth'] != null) {
+    final date = DateTime.parse(
+      user['dateOfBirth'],
+    );
 
     _dobCtrl.text =
         '${date.day.toString().padLeft(2, '0')} / '
@@ -107,147 +126,147 @@ Future<void> _load() async {
         '${date.year}';
   }
 
-  // emergency contact
-  final contacts =
-      user['emergencyContacts'];
+  // ── Emergency contacts (user-specific)
+  final savedContacts =
+      prefs.getString(
+    '${userId}_emergency_contacts',
+  );
 
-  if (contacts != null &&
-      contacts.isNotEmpty) {
-    final e = contacts.first;
+  if (savedContacts != null) {
+    final decoded =
+        jsonDecode(savedContacts);
 
-    _ecEntry = {
-      'name': TextEditingController(
-        text: e['name'] ?? '',
-      ),
-      'phone': TextEditingController(
-        text: e['phone'] ?? '',
-      ),
-    };
+    if (decoded.isNotEmpty) {
+      final e = decoded.first;
+
+      _ecEntry = {
+        'name': TextEditingController(
+          text: e['name'] ?? '',
+        ),
+        'phone': TextEditingController(
+          text: e['phone'] ?? '',
+        ),
+      };
+    }
+  } else {
+    final contacts =
+        user['emergencyContacts'];
+
+    if (contacts != null &&
+        contacts.isNotEmpty) {
+      final e = contacts.first;
+
+      _ecEntry = {
+        'name': TextEditingController(
+          text: e['name'] ?? '',
+        ),
+        'phone': TextEditingController(
+          text: e['phone'] ?? '',
+        ),
+      };
+    }
   }
 
-  // medical resume parsing
+  // ── Medical resume fallback
   final medicalResume =
       user['medicalResume'] ?? '';
 
-  _bloodCtrl.text =
+  _bloodCtrl.text = prefs.getString(
+        '${userId}_groupe_sanguin',
+      ) ??
       _extractSingleLine(
-    medicalResume,
-    'Groupe sanguin:',
-  );
+        medicalResume,
+        'Groupe sanguin:',
+      );
 
   _allergiesCtrl.text =
+      prefs.getString(
+        '${userId}_allergies',
+      ) ??
       _extractSingleLine(
-    medicalResume,
-    'Allergies:',
-  );
+        medicalResume,
+        'Allergies:',
+      );
 
   _chronicCtrl.text =
+      prefs.getString(
+        '${userId}_maladies_chroniques',
+      ) ??
       _extractMultiLine(
-    medicalResume,
-    'Maladies chroniques:',
-    'Médicaments:',
-  );
+        medicalResume,
+        'Maladies chroniques:',
+        'Médicaments:',
+      );
 
-  _medsCtrl.text =
+  _medsCtrl.text = prefs.getString(
+        '${userId}_medicaments',
+      ) ??
       _extractAfter(
-    medicalResume,
-    'Médicaments:',
-  );
+        medicalResume,
+        'Médicaments:',
+      );
 
   setState(() {});
 }
+  String _extractSingleLine(String text, String label) {
+    try {
+      final regex = RegExp('$label\\s*(.*)');
 
-String _extractSingleLine(
-  String text,
-  String label,
-) {
-  try {
-    final regex = RegExp(
-      '$label\\s*(.*)',
-    );
+      final match = regex.firstMatch(text);
 
-    final match =
-        regex.firstMatch(text);
-
-    return match
-            ?.group(1)
-            ?.trim() ??
-        '';
-  } catch (_) {
-    return '';
-  }
-}
-
-String _extractMultiLine(
-  String text,
-  String startLabel,
-  String endLabel,
-) {
-  try {
-    final start =
-        text.indexOf(startLabel);
-
-    final end =
-        text.indexOf(endLabel);
-
-    if (start == -1 ||
-        end == -1) {
+      return match?.group(1)?.trim() ?? '';
+    } catch (_) {
       return '';
     }
-
-    return text
-        .substring(
-          start +
-              startLabel.length,
-          end,
-        )
-        .trim();
-  } catch (_) {
-    return '';
   }
-}
 
-String _extractAfter(
-  String text,
-  String label,
-) {
-  try {
-    final index =
-        text.indexOf(label);
+  String _extractMultiLine(String text, String startLabel, String endLabel) {
+    try {
+      final start = text.indexOf(startLabel);
 
-    if (index == -1) {
+      final end = text.indexOf(endLabel);
+
+      if (start == -1 || end == -1) {
+        return '';
+      }
+
+      return text.substring(start + startLabel.length, end).trim();
+    } catch (_) {
       return '';
     }
-
-    return text
-        .substring(
-          index + label.length,
-        )
-        .trim();
-  } catch (_) {
-    return '';
   }
-}
+
+  String _extractAfter(String text, String label) {
+    try {
+      final index = text.indexOf(label);
+
+      if (index == -1) {
+        return '';
+      }
+
+      return text.substring(index + label.length).trim();
+    } catch (_) {
+      return '';
+    }
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   //  IMAGE PICK
- Future<void> _pickImage() async {
-  final picked = await ImagePicker().pickImage(
-    source: ImageSource.gallery,
-    imageQuality: 80,
-  );
+  Future<void> _pickImage() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
 
-  if (picked == null) return;
+    if (picked == null) return;
 
-  await StorageHelper.saveProfileImage(
-    picked.path,
-  );
+    await StorageHelper.saveProfileImage(picked.path);
 
-  setState(() {
-    _profileImagePath = picked.path;
-    _newImagePicked = true;
-  });
-}
+    setState(() {
+      _profileImagePath = picked.path;
+      _newImagePicked = true;
+    });
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   //  DATE OF BIRTH PICKER
@@ -408,17 +427,19 @@ String _extractAfter(
   //  SAVE
   // ─────────────────────────────────────────────────────────────────────────
  Future<void> _save() async {
+  final userId = await StorageHelper.getUserId();
+
+  if (userId == null) return;
   if (!_validateEcEntry()) return;
 
   setState(() => _saving = true);
 
-  final prefs =
-      await SharedPreferences.getInstance();
+  final prefs = await SharedPreferences.getInstance();
 
   // avatar local only
   _newImagePicked = false;
 
-  // StorageHelper sync
+  // Save core user info
   await StorageHelper.saveUser(
     nom: _nomCtrl.text.trim(),
     prenom: _prenomCtrl.text.trim(),
@@ -426,74 +447,72 @@ String _extractAfter(
     email: _emailCtrl.text.trim(),
   );
 
-  // save local values
+  // Emergency contacts
+  final contacts = _ecEntry != null
+      ? [
+          {
+            'name': _ecEntry!['name']!.text.trim(),
+            'phone': _ecEntry!['phone']!.text.trim(),
+          },
+        ]
+      : <Map<String, String>>[];
+
+  // Save LOCAL DATA PER USER
   await Future.wait([
     prefs.setString(
-      'date_naissance',
+      '${userId}_date_naissance',
       _dobCtrl.text.trim(),
     ),
+
     prefs.setString(
-      'lieu_naissance',
+      '${userId}_lieu_naissance',
       _lieuCtrl.text.trim(),
     ),
+
     prefs.setString(
-      'genre',
+      '${userId}_genre',
       _genreCtrl.text.trim(),
     ),
+
     prefs.setString(
-      'adresse',
+      '${userId}_adresse',
       _adresseCtrl.text.trim(),
     ),
+
     prefs.setString(
-      'groupe_sanguin',
+      '${userId}_groupe_sanguin',
       _bloodCtrl.text.trim(),
     ),
+
     prefs.setString(
-      'allergies',
+      '${userId}_allergies',
       _allergiesCtrl.text.trim(),
     ),
+
     prefs.setString(
-      'maladies_chroniques',
+      '${userId}_maladies_chroniques',
       _chronicCtrl.text.trim(),
     ),
+
     prefs.setString(
-      'medicaments',
+      '${userId}_medicaments',
       _medsCtrl.text.trim(),
+    ),
+
+    prefs.setString(
+      '${userId}_emergency_contacts',
+      jsonEncode(contacts),
     ),
   ]);
 
-  // emergency contact
-  final contacts =
-      _ecEntry != null
-          ? [
-              {
-                'name':
-                    _ecEntry!['name']!
-                        .text
-                        .trim(),
-                'phone':
-                    _ecEntry!['phone']!
-                        .text
-                        .trim(),
-              },
-            ]
-          : <Map<String, String>>[];
-
-  await prefs.setString(
-    'emergency_contacts',
-    jsonEncode(contacts),
-  );
-
+  // Parse DOB
   DateTime? parsedDate;
 
   try {
-    final parts =
-        _dobCtrl.text
-            .split('/')
-            .map(
-              (e) => e.trim(),
-            )
-            .toList();
+    final parts = _dobCtrl.text
+        .split('/')
+        .map((e) => e.trim())
+        .toList();
 
     parsedDate = DateTime(
       int.parse(parts[2]),
@@ -502,39 +521,21 @@ String _extractAfter(
     );
   } catch (_) {}
 
-  final err =
-      await PatientService.updateProfile({
-    'firstName':
-        _prenomCtrl.text.trim(),
-
-    'lastName':
-        _nomCtrl.text.trim(),
-
-    'phone':
-        _phoneCtrl.text.trim(),
-
-    'email':
-        _emailCtrl.text.trim(),
-
-    'placeOfBirth':
-        _lieuCtrl.text.trim(),
-
-    'address':
-        _adresseCtrl.text.trim(),
-
+  // Save to backend
+  final err = await PatientService.updateProfile({
+    'firstName': _prenomCtrl.text.trim(),
+    'lastName': _nomCtrl.text.trim(),
+    'phone': _phoneCtrl.text.trim(),
+    'email': _emailCtrl.text.trim(),
+    'placeOfBirth': _lieuCtrl.text.trim(),
+    'address': _adresseCtrl.text.trim(),
     'gender':
-        _genreCtrl.text ==
-                'Homme'
+        _genreCtrl.text == 'Homme'
             ? 'male'
             : 'female',
-
     'dateOfBirth':
-        parsedDate
-            ?.toIso8601String(),
-
-    'emergencyContacts':
-        contacts,
-
+        parsedDate?.toIso8601String(),
+    'emergencyContacts': contacts,
     'medicalResume': '''
 Groupe sanguin: ${_bloodCtrl.text}
 
@@ -549,9 +550,7 @@ ${_medsCtrl.text}
   });
 
   if (err != null) {
-    debugPrint(
-      '❌ API error: $err',
-    );
+    debugPrint('❌ API error: $err');
   }
 
   setState(() {
@@ -564,9 +563,9 @@ ${_medsCtrl.text}
   );
 
   if (mounted) {
-    setState(
-      () => _showSuccess = false,
-    );
+    setState(() {
+      _showSuccess = false;
+    });
   }
 }
   //  DISPOSE

@@ -86,9 +86,13 @@ class StorageHelper {
     return p.getString('token') != null;
   }
 
-  // ── Clear all (logout)
+  // ── (logout)
   static Future<void> clear() async {
-    final p = await _getPrefs();
-    await p.clear();
-  }
+  final p = await _getPrefs();
+
+  await p.remove('token');
+  await p.remove('refresh_token');
+  await p.remove('user_id');
+  await p.remove('patient_id');
+}
 }

@@ -15,7 +15,6 @@ import 'sign_in_screen.dart';
 import '../services/auth_service.dart';
 import '../services/patient_service.dart';
 
-
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -24,16 +23,16 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _nom         = '';
-  String _prenom      = '';
-  String _patientId   = '';
+  String _nom = '';
+  String _prenom = '';
+  String _patientId = '';
   String? _imagePath;
   List<Map<String, String>> _emergencyContacts = [];
 
   // BACKEND TODO: load from API
-  final int _rapports     = 4;
+  final int _rapports = 4;
   final int _rdvEffectues = 2;
-  final int _medecins     = 3;
+  final int _medecins = 3;
 
   @override
   void initState() {
@@ -41,16 +40,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUser();
   }
 
-Future<void> _loadUser() async {
-  final prefs = await SharedPreferences.getInstance();
+  Future<void> _loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
 
-  final user = await PatientService.getProfile();
+    final userId = await StorageHelper.getUserId();
 
-  if (user == null) return;
+    if (userId == null) return;
 
-  // emergency contacts
-  final contacts =
-      (user['emergencyContacts'] as List?)
+    final user = await PatientService.getProfile();
+
+    if (user == null) return;
+
+    List<Map<String, String>> contacts = [];
+
+    // ── First try local saved contacts
+    final savedContacts = prefs.getString('${userId}_emergency_contacts');
+
+    if (savedContacts != null) {
+      final decoded = jsonDecode(savedContacts);
+
+      contacts = List<Map<String, String>>.from(
+        decoded.map(
+          (e) => {
+            'name': e['name']?.toString() ?? '',
+            'phone': e['phone']?.toString() ?? '',
+          },
+        ),
+      );
+    } else {
+      // ── Fallback to backend
+      contacts =
+          (user['emergencyContacts'] as List?)
               ?.map(
                 (e) => {
                   'name': e['name']?.toString() ?? '',
@@ -59,51 +79,60 @@ Future<void> _loadUser() async {
               )
               .toList() ??
           [];
+    }
 
-  setState(() {
-    _nom = user['lastName'] ?? '';
+    setState(() {
+      _nom = user['lastName'] ?? '';
 
-    _prenom = user['firstName'] ?? '';
+      _prenom = user['firstName'] ?? '';
 
-    _patientId = user['_id'] ?? '';
+      _patientId = user['_id'] ?? '';
 
-    _emergencyContacts =
-        List<Map<String, String>>.from(contacts);
+      _emergencyContacts = contacts;
 
-    // avatar stays local
-    _imagePath =
-        prefs.getString('profile_image_path');
-  });
-}
+      // avatar local
+      _imagePath = prefs.getString('profile_image_path');
+    });
+  }
 
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Se déconnecter',
-            style: TextStyle(
-                fontWeight: FontWeight.w700, color: AppColors.textDark)),
-        content: const Text('Voulez-vous vraiment vous déconnecter ?',
-            style: TextStyle(color: AppColors.textGrey)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Se déconnecter',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
+          ),
+        ),
+        content: const Text(
+          'Voulez-vous vraiment vous déconnecter ?',
+          style: TextStyle(color: AppColors.textGrey),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler',
-                style: TextStyle(color: AppColors.textGrey)),
+            child: const Text(
+              'Annuler',
+              style: TextStyle(color: AppColors.textGrey),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
               elevation: 0,
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Déconnecter',
-                style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Déconnecter',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -118,89 +147,85 @@ Future<void> _loadUser() async {
     }
   }
 
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: Colors.transparent,
-    body: Stack(
-      children: [
-        // 🌍 FULL SCREEN BACKGROUND (your background.dart)
-        const Positioned.fill(
-          child: Background(),
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          // 🌍 FULL SCREEN BACKGROUND (your background.dart)
+          const Positioned.fill(child: Background()),
 
-        SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 10),
-                _buildStatsCard(),
-                const SizedBox(height: 24),
-                _buildEmergencySection(),
-                const SizedBox(height: 24),
-                _buildParametresSection(),
-                const SizedBox(height: 32),
-              ],
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 10),
+                  _buildStatsCard(),
+                  const SizedBox(height: 24),
+                  _buildEmergencySection(),
+                  const SizedBox(height: 24),
+                  _buildParametresSection(),
+                  const SizedBox(height: 32),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   // ── Header ────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
-  return SizedBox(
-    height: 280,
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const SizedBox(height: 24),
+    return SizedBox(
+      height: 280,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 24),
 
-        // Avatar stays
-        _avatar(),
+          // Avatar stays
+          _avatar(),
 
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-        Text(
-          '$_nom $_prenom'.trim().isEmpty
-              ? 'Mon Profil'
-              : '$_nom $_prenom',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textDark,
-          ),
-        ),
-
-        const SizedBox(height: 4),
-
-        if (_patientId.isNotEmpty)
           Text(
-            _patientId,
+            '$_nom $_prenom'.trim().isEmpty ? 'Mon Profil' : '$_nom $_prenom',
             style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textGrey,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
             ),
           ),
-      ],
-    ),
-  );
-}
+
+          const SizedBox(height: 4),
+
+          if (_patientId.isNotEmpty)
+            Text(
+              _patientId,
+              style: const TextStyle(fontSize: 13, color: AppColors.textGrey),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _avatar() {
     return Container(
-      width: 96, height: 96,
+      width: 96,
+      height: 96,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.primary, width: 3),
         boxShadow: [
           BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.25),
-              blurRadius: 16, spreadRadius: 2)
+            color: AppColors.primary.withValues(alpha: 0.25),
+            blurRadius: 16,
+            spreadRadius: 2,
+          ),
         ],
       ),
       child: ClipOval(
@@ -208,8 +233,12 @@ Widget build(BuildContext context) {
             ? Image.file(File(_imagePath!), fit: BoxFit.cover)
             : Container(
                 color: AppColors.primaryLight,
-                child: const Icon(Icons.person,
-                    size: 48, color: AppColors.primary)),
+                child: const Icon(
+                  Icons.person,
+                  size: 48,
+                  color: AppColors.primary,
+                ),
+              ),
       ),
     );
   }
@@ -223,41 +252,53 @@ Widget build(BuildContext context) {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10, offset: const Offset(0, 3))
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
           ],
         ),
-        child: Row(children: [
-          _statCell(_rapports.toString(),     'Rapports'),
-          _statDivider(),
-          _statCell(_rdvEffectues.toString(), 'RDV effectué'),
-          _statDivider(),
-          _statCell(_medecins.toString(),     'Médecins'),
-        ]),
+        child: Row(
+          children: [
+            _statCell(_rapports.toString(), 'Rapports'),
+            _statDivider(),
+            _statCell(_rdvEffectues.toString(), 'RDV effectué'),
+            _statDivider(),
+            _statCell(_medecins.toString(), 'Médecins'),
+          ],
+        ),
       ),
     );
   }
 
   Widget _statCell(String value, String label) => Expanded(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          child: Column(children: [
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary)),
-            const SizedBox(height: 3),
-            Text(label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11, color: AppColors.textGrey)),
-          ]),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11, color: AppColors.textGrey),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _statDivider() =>
-    Container(width: 1, height: 36, color: Colors.transparent);
-    
+      Container(width: 1, height: 36, color: Colors.transparent);
+
   // ── Emergency contacts ────────────────────────────────────────────────────
   Widget _buildEmergencySection() {
     return Padding(
@@ -265,24 +306,32 @@ Widget build(BuildContext context) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: const [
-            Text('🚨', style: TextStyle(fontSize: 18)),
-            SizedBox(width: 8),
-            Text('Contacts d\'urgence',
+          Row(
+            children: const [
+              Text('🚨', style: TextStyle(fontSize: 18)),
+              SizedBox(width: 8),
+              Text(
+                'Contacts d\'urgence',
                 style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark)),
-          ]),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           if (_emergencyContacts.isEmpty)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12)),
-              child: const Text('Aucun contact d\'urgence ajouté.',
-                  style: TextStyle(color: AppColors.textGrey)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Aucun contact d\'urgence ajouté.',
+                style: TextStyle(color: AppColors.textGrey),
+              ),
             )
           else
             ..._emergencyContacts.map(_contactCard),
@@ -292,8 +341,8 @@ Widget build(BuildContext context) {
   }
 
   Widget _contactCard(Map<String, String> contact) {
-    final name    = contact['name']  ?? '';
-    final phone   = contact['phone'] ?? '';
+    final name = contact['name'] ?? '';
+    final phone = contact['phone'] ?? '';
     final initials = name.trim().isNotEmpty
         ? name.trim().split(' ').map((w) => w[0].toUpperCase()).take(2).join()
         : '?';
@@ -305,41 +354,54 @@ Widget build(BuildContext context) {
         color: AppColors.error.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Row(children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: AppColors.error.withValues(alpha: 0.14),
-          child: Text(initials,
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.error.withValues(alpha: 0.14),
+            child: Text(
+              initials,
               style: const TextStyle(
-                  color: AppColors.error,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(name,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textDark,
-                      fontSize: 14)),
-              const SizedBox(height: 2),
-              Text(phone,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textGrey)),
-            ],
+                color: AppColors.error,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
           ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  phone,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textGrey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
               color: AppColors.error.withValues(alpha: 0.1),
-              shape: BoxShape.circle),
-          child: const Icon(Icons.phone, color: AppColors.error, size: 18),
-        ),
-      ]),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.phone, color: AppColors.error, size: 18),
+          ),
+        ],
+      ),
     );
   }
 
@@ -350,51 +412,60 @@ Widget build(BuildContext context) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Paramètres',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark)),
+          const Text(
+            'Paramètres',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
+          ),
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8, offset: const Offset(0, 2))
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
               ],
             ),
-            child: Column(children: [
-              _settingTile(
-                icon: Icons.person_outline_rounded,
-                label: 'Informations Personnelles',
-                onTap: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const PersonalInfoScreen()),
-                  );
-                  _loadUser(); // refresh name / avatar if changed
-                },
-              ),
-              _settingDivider(),
-              _settingTile(
-                icon: Icons.lock_outline_rounded,
-                label: 'Confidentialité et Sécurité',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SecurityScreen()),
+            child: Column(
+              children: [
+                _settingTile(
+                  icon: Icons.person_outline_rounded,
+                  label: 'Informations Personnelles',
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PersonalInfoScreen(),
+                      ),
+                    );
+                    _loadUser(); // refresh name / avatar if changed
+                  },
                 ),
-              ),
-              _settingDivider(),
-              _settingTile(
-                icon: Icons.logout_rounded,
-                label: 'Se déconnecter',
-                isDestructive: true,
-                onTap: _logout,
-              ),
-            ]),
+                _settingDivider(),
+                _settingTile(
+                  icon: Icons.lock_outline_rounded,
+                  label: 'Confidentialité et Sécurité',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SecurityScreen()),
+                  ),
+                ),
+                _settingDivider(),
+                _settingTile(
+                  icon: Icons.logout_rounded,
+                  label: 'Se déconnecter',
+                  isDestructive: true,
+                  onTap: _logout,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -407,9 +478,9 @@ Widget build(BuildContext context) {
     required VoidCallback onTap,
     bool isDestructive = false,
   }) {
-    final textColor  = isDestructive ? AppColors.error : AppColors.textDark;
-    final iconColor  = isDestructive ? AppColors.error : AppColors.primary;
-    final iconBg     = isDestructive
+    final textColor = isDestructive ? AppColors.error : AppColors.textDark;
+    final iconColor = isDestructive ? AppColors.error : AppColors.primary;
+    final iconBg = isDestructive
         ? AppColors.error.withValues(alpha: 0.1)
         : AppColors.primaryLight;
 
@@ -418,29 +489,42 @@ Widget build(BuildContext context) {
       borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-                color: iconBg, borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-              child: Text(label,
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: textColor))),
-          Icon(Icons.chevron_right_rounded, color: AppColors.border, size: 20),
-        ]),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: textColor,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.border,
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _settingDivider() => Divider(
-      height: 1,
-      indent: 54,
-      endIndent: 16,
-      color: const Color(0xFFF4FBF8));
+    height: 1,
+    indent: 54,
+    endIndent: 16,
+    color: const Color(0xFFF4FBF8),
+  );
 }

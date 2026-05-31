@@ -7,6 +7,7 @@ import 'experiences_screen.dart';
 import 'demandes_screen.dart';
 import '../config/app_colors.dart';
 import '../config/storage_helper.dart';
+import '../services/patient_service.dart';
 import 'chatbot_screen.dart';
 import 'appointments_screen.dart';
 import 'dossier_screen.dart';
@@ -30,50 +31,102 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUser();
   }
 
-  Future<void> _loadUser() async {
-    final nom = await StorageHelper.getNom();
-    final prenom = await StorageHelper.getPrenom();
-    final imagePath = await StorageHelper.getProfileImage();
+ Future<void> _loadUser() async {
+  final imagePath =
+      await StorageHelper.getProfileImage();
 
-    Appointment? next;
+  String nom = '';
+  String prenom = '';
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
+  // ── Load from backend
+  try {
+    final user =
+        await PatientService.getProfile();
 
-      final raw = prefs.getString('appointments');
+    if (user != null) {
+      nom =
+          user['lastName'] ?? '';
 
-      if (raw != null) {
-        final list = List<Map<String, dynamic>>.from(jsonDecode(raw));
+      prenom =
+          user['firstName'] ?? '';
 
-        final appts = list.map(Appointment.fromJson).toList();
+      // keep StorageHelper synced
+      await StorageHelper.saveUser(
+        nom: nom,
+        prenom: prenom,
+        phone:
+            user['phone'] ?? '',
+        email:
+            user['email'] ?? '',
+      );
+    }
+  } catch (_) {}
 
-        final now = DateTime.now();
+  Appointment? next;
 
-        final upcoming =
-            appts
-                .where(
-                  (a) =>
-                      a.status != 'termine' &&
-                      a.date.isAfter(now.subtract(const Duration(hours: 1))),
-                )
-                .toList()
-              ..sort((a, b) => a.date.compareTo(b.date));
+  try {
+    final prefs =
+        await SharedPreferences.getInstance();
 
-        if (upcoming.isNotEmpty) {
-          next = upcoming.first;
-        }
+    final raw =
+        prefs.getString('appointments');
+
+    if (raw != null) {
+      final list =
+          List<Map<String, dynamic>>.from(
+            jsonDecode(raw),
+          );
+
+      final appts =
+          list
+              .map(
+                Appointment.fromJson,
+              )
+              .toList();
+
+      final now =
+          DateTime.now();
+
+      final upcoming =
+          appts
+              .where(
+                (a) =>
+                    a.status !=
+                        'termine' &&
+                    a.date.isAfter(
+                      now.subtract(
+                        const Duration(
+                          hours: 1,
+                        ),
+                      ),
+                    ),
+              )
+              .toList()
+            ..sort(
+              (a, b) =>
+                  a.date.compareTo(
+                    b.date,
+                  ),
+            );
+
+      if (upcoming.isNotEmpty) {
+        next =
+            upcoming.first;
       }
-    } catch (_) {}
+    }
+  } catch (_) {}
 
-    if (!mounted) return;
+  if (!mounted) return;
 
-    setState(() {
-      _nom = nom ?? '';
-      _prenom = prenom ?? '';
-      _profileImagePath = imagePath;
-      _nextAppointment = next;
-    });
-  }
+  setState(() {
+    _nom = nom;
+    _prenom = prenom;
+    _profileImagePath =
+        imagePath;
+    _nextAppointment =
+        next;
+  });
+}
 
   void _goToAppointments() async {
     await Navigator.push(
