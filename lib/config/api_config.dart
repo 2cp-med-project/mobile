@@ -1,7 +1,7 @@
 class ApiConfig {
   // CHANGE THIS TO YOUR BACKEND IP
   static const String baseUrl =
-      'http://10.247.91.26:5000/api';
+      'http://10.58.114.26:5000/api';
 
   // Endpoints
   static const consultation = '/records/consultation';

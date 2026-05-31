@@ -37,22 +37,16 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    // Check if medical form was completed
-    final prefs     = await SharedPreferences.getInstance();
-    final formDone  = prefs.getBool('medical_form_completed') ?? false;
-
-    if (!formDone) {
-      // Force medical form — no back button leads to home
-      _go(const MedicalFormScreen());
-    } else {
-      _go(const MainScreen());
-    }
+    // already authenticated → go home
+    _go(const MainScreen());
   }
 
   void _go(Widget screen) {
     if (!mounted) return;
     Navigator.pushReplacement(
-        context, MaterialPageRoute(builder: (_) => screen));
+      context,
+      MaterialPageRoute(builder: (_) => screen),
+    );
   }
 
   @override
@@ -65,15 +59,17 @@ class _SplashScreenState extends State<SplashScreen> {
           children: const [
             Logo(),
             SizedBox(height: 16),
-            Text('Healio',
-                style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                    letterSpacing: -0.5)),
+            Text(
+              'Healio',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+                letterSpacing: -0.5,
+              ),
+            ),
             SizedBox(height: 48),
-            CircularProgressIndicator(
-                color: AppColors.primary, strokeWidth: 2),
+            CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
           ],
         ),
       ),

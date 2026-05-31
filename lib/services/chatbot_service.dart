@@ -71,22 +71,22 @@ class ChatbotService {
 
   // load all chats
   static Future<List<dynamic>>
-  getChats() async {
-    final res = await ApiClient.get(
-      Endpoints.chatbot,
-    );
+getChats() async {
+  final res = await ApiClient.get(
+    Endpoints.chatbot,
+  );
 
-    if (res.success) {
-      return List<dynamic>.from(
-        res.data,
-      );
-    }
-
-    throw Exception(
-      res.error ??
-      'Failed to load chats',
+  if (res.success) {
+    return List<dynamic>.from(
+      res.data['chats'] ?? [],
     );
   }
+
+  throw Exception(
+    res.error ??
+    'Failed to load chats',
+  );
+}
 
   // delete
   static Future<void> deleteChat(

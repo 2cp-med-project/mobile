@@ -231,19 +231,23 @@ String _extractAfter(
 
   // ─────────────────────────────────────────────────────────────────────────
   //  IMAGE PICK
-  Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-    if (picked == null) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('profile_image_path', picked.path);
-    setState(() {
-      _profileImagePath = picked.path;
-      _newImagePicked = true;
-    });
-  }
+ Future<void> _pickImage() async {
+  final picked = await ImagePicker().pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 80,
+  );
+
+  if (picked == null) return;
+
+  await StorageHelper.saveProfileImage(
+    picked.path,
+  );
+
+  setState(() {
+    _profileImagePath = picked.path;
+    _newImagePicked = true;
+  });
+}
 
   // ─────────────────────────────────────────────────────────────────────────
   //  DATE OF BIRTH PICKER

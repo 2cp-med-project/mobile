@@ -45,82 +45,147 @@ class DossierScreen extends StatefulWidget {
 class _DossierScreenState extends State<DossierScreen> {
   final _searchCtrl = TextEditingController();
 
-  List<MedicalFile> _files = [];
-  bool _loading = true;
-
   String _query = '';
-
   String? _filterType;
   String? _filterMedecin;
-  // 'asc' | 'desc'
   String _sortModifie = 'desc';
 
-  final _types = ['Consultation', 'Analyse', 'Ordonnance', 'Radiologie'];
-  final _medecins = ['Dr.Merazi', 'Dr.Belsoumati', 'Dr.xxxxx'];
+  // Backend consultations converted to MedicalFile
+  List<MedicalFile> _consultations = [];
+
+  bool _loading = true;
+
+  // Dynamic doctors list
+  List<String> get _medecins {
+    final doctors = _consultations
+        .map((e) => e.doctorName)
+        .where((e) => e.trim().isNotEmpty)
+        .toSet()
+        .toList();
+
+    doctors.sort();
+    return doctors;
+  }
+
+  final _types = [
+    'Consultation',
+    'Analyse',
+    'Ordonnance',
+    'Radiologie',
+  ];
 
   @override
   void initState() {
     super.initState();
+      debugPrint('DOSSIER SCREEN OPENED');
+
     _loadConsultations();
   }
 
-  Future<void> _loadConsultations() async {
-    try {
-      final patientId = await StorageHelper.getUserId();
+Future<void> _loadConsultations() async {
+    debugPrint('LOAD CONSULTATIONS CALLED');
 
-      final data = await ConsultationService.getConsultations(
-        patientId: patientId!,
-        order: _sortModifie,
-        sortBy: 'date',
-      );
+  try {
+    final patientId = await StorageHelper.getPatientId();
 
-      final files = data.map<MedicalFile>((c) {
-        return MedicalFile(
-          id: c['_id'],
-          name: c['typeofvisit']?.toString().isNotEmpty == true
-              ? c['typeofvisit']
-              : 'Consultation',
-          doctorName:
-              c['doctorId']?['fullName'] ?? c['doctorId']?['name'] ?? 'Médecin',
-          date: c['date'] ?? '',
-          type: 'Consultation',
-          diagnosis: c['diagnosis'],
-          treatmentPlan: c['treatmentPlan'],
-          doctorNote: c['notes'],
-          status: c['status'],
-          severity: c['severity'],
-        );
-      }).toList();
+    debugPrint('PATIENT ID: $patientId');
 
-      setState(() {
-        _files = files;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _loading = false;
-      });
+    if (patientId == null || patientId.isEmpty) {
+      throw Exception('Patient ID not found');
     }
-  }
 
+    final data = await ConsultationService.getConsultations(
+      patientId: patientId,
+      order: _sortModifie,
+      sortBy: 'date',
+    );
+
+    debugPrint('RAW DATA: $data');
+
+
+    final files = data.map<MedicalFile>((c) {
+      debugPrint('ONE CONSULTATION: $c');
+
+      return MedicalFile(
+        id: c['_id'] ?? '',
+
+        name: c['typeofvisit']
+                    ?.toString()
+                    .trim()
+                    .isNotEmpty ==
+                true
+            ? c['typeofvisit']
+            : 'Consultation',
+
+        doctorName:
+            c['doctorId']?['fullName'] ??
+            c['doctorId']?['name'] ??
+            'Médecin',
+
+        date: c['date'] ?? '',
+
+        type: 'Consultation',
+
+        diagnosis: c['diagnosis'],
+        treatmentPlan: c['treatmentPlan'],
+        doctorNote: c['notes'],
+        status: c['status'],
+        severity: c['severity'],
+      );
+    }).toList();
+
+    debugPrint('FILES LENGTH: ${files.length}');
+
+    setState(() {
+      _consultations = files;
+      _loading = false;
+    });
+
+    debugPrint(
+      'STATE UPDATED → consultations: ${_consultations.length}',
+    );
+  } catch (e) {
+    debugPrint('Consultations error: $e');
+
+    setState(() {
+      _loading = false;
+    });
+  }
+}
+
+  // FILTERED LIST
   List<MedicalFile> get _filtered {
-    var list = _files.where((f) {
+    var list = _consultations.where((f) {
       final q = _query.toLowerCase();
+
       if (q.isNotEmpty &&
           !f.name.toLowerCase().contains(q) &&
-          !f.doctorName.toLowerCase().contains(q))
+          !f.doctorName.toLowerCase().contains(q)) {
         return false;
-      if (_filterType != null && f.type != _filterType) return false;
-      if (_filterMedecin != null && f.doctorName != _filterMedecin)
+      }
+
+      if (_filterType != null && f.type != _filterType) {
         return false;
+      }
+
+      if (_filterMedecin != null &&
+          f.doctorName != _filterMedecin) {
+        return false;
+      }
+
       return true;
     }).toList();
 
     list.sort((a, b) {
-      final da = DateTime.tryParse(a.date) ?? DateTime.now();
-      final db = DateTime.tryParse(b.date) ?? DateTime.now();
+      final da =
+          DateTime.tryParse(a.date) ?? DateTime.now();
 
-      return _sortModifie == 'asc' ? da.compareTo(db) : db.compareTo(da);
+      final db =
+          DateTime.tryParse(b.date) ?? DateTime.now();
+
+      return _sortModifie == 'asc'
+          ? da.compareTo(db)
+          : db.compareTo(da);
     });
 
     return list;
@@ -144,7 +209,9 @@ class _DossierScreenState extends State<DossierScreen> {
             _buildColumnHeaders(),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(
+                      child: CircularProgressIndicator(),
+                    )
                   : _buildFileList(),
             ),
           ],
@@ -153,7 +220,8 @@ class _DossierScreenState extends State<DossierScreen> {
     );
   }
 
-  // ── Search bar ────────────────────────────────────────────────────────────
+
+  // ── Search bar 
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -884,87 +952,75 @@ class _PdfPreviewState extends State<_PdfPreview> {
   }
 
   // Full-size page for the main viewer
-  Widget _buildMainPage(int page) {
-    return Container(
-      width: 240,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+ Widget _buildMainPage(int page) {
+  return Container(
+    width: 240,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(4),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.08),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 6,
+          color: AppColors.primary,
+          margin: const EdgeInsets.only(bottom: 16),
+        ),
+
+        Text(
+          widget.file.name,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header strip
-          Container(
-            height: 6,
-            color: AppColors.primary,
-            margin: const EdgeInsets.only(bottom: 12),
-          ),
-          // Text lines
-          ...List.generate(
-            5,
-            (_) => Container(
-              height: 7,
-              margin: const EdgeInsets.only(bottom: 7),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5F1),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          // Table rows
-          ...List.generate(
-            3,
-            (_) => Container(
-              height: 20,
-              margin: const EdgeInsets.only(bottom: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FAF7),
-                borderRadius: BorderRadius.circular(3),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ...List.generate(
-            3,
-            (_) => Container(
-              height: 5,
-              margin: const EdgeInsets.only(bottom: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5F1),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              // BACKEND TODO: replace with flutter_pdfview
-              'Page ${page + 1}',
-              style: TextStyle(
-                fontSize: 9,
-                color: AppColors.primary.withValues(alpha: 0.5),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+        ),
+
+        const SizedBox(height: 8),
+
+        Text('Médecin: ${widget.file.doctorName}'),
+        Text('Date: ${widget.file.date}'),
+
+        const Divider(height: 30),
+
+        const Text(
+          'Diagnostic',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        Text(widget.file.diagnosis ?? 'Non renseigné'),
+
+        const SizedBox(height: 16),
+
+        const Text(
+          'Traitement',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        Text(widget.file.treatmentPlan ?? 'Non renseigné'),
+
+        const SizedBox(height: 16),
+
+        const Text(
+          'Notes du médecin',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        Text(widget.file.doctorNote ?? 'Aucune note'),
+
+        const SizedBox(height: 16),
+
+        Text('Statut: ${widget.file.status ?? 'N/A'}'),
+        Text('Sévérité: ${widget.file.severity ?? 'N/A'}'),
+      ],
+    ),
+  );
+}}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  INFO PANEL

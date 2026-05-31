@@ -92,10 +92,16 @@ class _ChatbotScreenState extends State<ChatbotScreen>
 
     _inputCtrl.clear();
 
-    setState(() {
-      _chatMessages.putIfAbsent(_currentChatId, () => []);
+    final bool isNewChat = _currentChatId.isEmpty;
 
-      _chatMessages[_currentChatId]!.add(
+    // temporary id for UI before backend returns real id
+    final tempId = isNewChat ? 'temp_chat' : _currentChatId;
+
+    setState(() {
+      _chatMessages.putIfAbsent(tempId, () => []);
+
+      // show user message instantly
+      _chatMessages[tempId]!.add(
         _Message(text: text, isUser: true, time: _nowTime()),
       );
 
@@ -107,51 +113,73 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     try {
       Map<String, dynamic> response;
 
-      // first message -> create thread
-      if (_currentChatId.isEmpty) {
+      // ─────────────────────────
+      // NEW CHAT
+      // ─────────────────────────
+      if (isNewChat) {
         response = await ChatbotService.startChat(text);
 
-        final threadId = response['thread_id'].toString();
+        final threadId = response['threadId'].toString();
+        debugPrint('NEW THREAD CREATED = $threadId');
+        final aiReply =
+            response['response'] ?? response['message'] ?? 'Pas de réponse';
 
-        _currentChatId = threadId;
+        setState(() {
+          // move temp messages to real id
+          _chatMessages[threadId] = List<_Message>.from(
+            _chatMessages[tempId] ?? [],
+          );
 
-        _histories.insert(
-          0,
-          _ChatHistory(
-            id: threadId,
-            title: text.length > 20 ? text.substring(0, 20) : text,
-          ),
-        );
-      } else {
+          _chatMessages.remove(tempId);
+
+          _currentChatId = threadId;
+
+          // add AI response
+          _chatMessages[threadId]!.add(
+            _Message(text: aiReply, isUser: false, time: _nowTime()),
+          );
+
+          // history
+          _histories.insert(
+            0,
+            _ChatHistory(
+              id: threadId,
+              title:
+                  response['title'] ??
+                  (text.length > 25 ? text.substring(0, 25) : text),
+            ),
+          );
+
+          _isLoading = false;
+        });
+      }
+      // ─────────────────────────
+      // EXISTING CHAT
+      // ─────────────────────────
+      else {
         response = await ChatbotService.sendMessage(
           threadId: _currentChatId,
           prompt: text,
         );
+
+        final aiReply =
+            response['response'] ?? response['message'] ?? 'Pas de réponse';
+
+        setState(() {
+          _chatMessages[_currentChatId]!.add(
+            _Message(text: aiReply, isUser: false, time: _nowTime()),
+          );
+
+          _isLoading = false;
+        });
       }
-
-      final aiReply =
-          response['response'] ??
-          response['reply'] ??
-          response['message'] ??
-          response['text'] ??
-          response['data']?['response'] ??
-          response['data']?['message'] ??
-          'Pas de réponse';
-
-      setState(() {
-        _chatMessages[_currentChatId]!.add(
-          _Message(text: aiReply, isUser: false, time: _nowTime()),
-        );
-
-        _isLoading = false;
-      });
 
       _scrollToBottom();
     } catch (e) {
       setState(() {
         _isLoading = false;
 
-        _chatMessages[_currentChatId]!.add(
+        _chatMessages[tempId]?.add(
           _Message(
             text: 'Erreur de connexion au chatbot',
             isUser: false,
@@ -159,6 +187,8 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           ),
         );
       });
+
+      debugPrint(e.toString());
     }
   }
 
@@ -171,54 +201,77 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   void _newDiscussion() {
     setState(() {
       _currentChatId = '';
-
-      // clear input
       _inputCtrl.clear();
 
-      // close panel + exit delete mode
       _isPanelOpen = false;
       _isDeleteMode = false;
+      _selectedForDelete.clear();
       _isLoading = false;
-
-      // force empty temporary discussion
-      _chatMessages[''] = [];
     });
   }
 
   // ── Load existing chat
-  Future<void> _loadChat(String id) async {
+ Future<void> _loadChat(String id) async {
+  debugPrint('OPEN CHAT ID = $id');
+
+  // already opened chat
+  if (_currentChatId == id &&
+      _chatMessages.containsKey(id)) {
     setState(() {
-      _currentChatId = id;
       _isPanelOpen = false;
       _isDeleteMode = false;
-      _isLoading = true;
+      _selectedForDelete.clear();
     });
 
-    try {
-      final data = await ChatbotService.getChat(id);
-
-      final messages = (data['messages'] ?? []) as List;
-
-      _chatMessages[id] = messages.map((m) {
-        return _Message(
-          text: m['content'] ?? '',
-          isUser: m['role'] == 'user',
-          time: _nowTime(),
-        );
-      }).toList();
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      _scrollToBottom();
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    return;
   }
 
+  setState(() {
+    _currentChatId = id;
+    _isPanelOpen = false;
+    _isDeleteMode = false;
+    _selectedForDelete.clear();
+    _isLoading = true;
+  });
+
+  try {
+    final data =
+        await ChatbotService.getChat(id);
+
+    final messages =
+        (data['history'] ??
+                data['messages'] ??
+                [])
+            as List;
+
+    final loadedMessages =
+        messages.map((m) {
+      return _Message(
+        text: m['content'] ?? '',
+        isUser:
+            m['role'] == 'user',
+        time: _nowTime(),
+      );
+    }).toList();
+
+    setState(() {
+      _chatMessages[id] =
+          loadedMessages;
+
+      _isLoading = false;
+    });
+
+    _scrollToBottom();
+  } catch (e) {
+    debugPrint(
+      'LOAD CHAT ERROR: $e',
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+}
   // ── Toggle delete mode
   void _toggleDeleteMode() {
     setState(() {
@@ -856,80 +909,88 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                   final isSelected = _selectedForDelete.contains(chat.id);
                   final isActive = chat.id == _currentChatId;
 
-                  return GestureDetector(
-                    onTap: () {
-                      if (_isDeleteMode) {
-                        setState(() {
-                          if (isSelected) {
-                            _selectedForDelete.remove(chat.id);
-                          } else {
-                            _selectedForDelete.add(chat.id);
-                          }
-                        });
-                      } else {
-                        _loadChat(chat.id);
-                      }
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.only(bottom: 4),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isActive && !_isDeleteMode
-                            ? const Color(0xFF1FAF87).withValues(alpha: 0.12)
-                            : isSelected
-                            ? const Color(0xFFE53935).withValues(alpha: 0.08)
-                            : Colors.transparent,
+                  return Container(
+                    key: ValueKey(chat.id),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
                         borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          // Checkbox in delete mode
-                          if (_isDeleteMode) ...[
-                            Container(
-                              width: 18,
-                              height: 18,
-                              margin: const EdgeInsets.only(right: 10),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFFE53935)
-                                    : Colors.transparent,
-                                border: Border.all(
-                                  color: isSelected
-                                      ? const Color(0xFFE53935)
-                                      : Colors.grey.shade300,
-                                ),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: isSelected
-                                  ? const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 12,
-                                    )
-                                  : null,
-                            ),
-                          ],
-                          Expanded(
-                            child: Text(
-                              chat.title,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: isActive && !_isDeleteMode
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color: isSelected
-                                    ? const Color(0xFFE53935)
-                                    : const Color(0xFF1A1A2E),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                        onTap: () {
+                          if (_isDeleteMode) {
+                            setState(() {
+                              if (_selectedForDelete.contains(chat.id)) {
+                                _selectedForDelete.remove(chat.id);
+                              } else {
+                                _selectedForDelete.add(chat.id);
+                              }
+                            });
+                            return;
+                          }
+
+                          _loadChat(chat.id);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
                           ),
-                        ],
+                          decoration: BoxDecoration(
+                            color: isActive && !_isDeleteMode
+                                ? const Color(0xFF1FAF87).withOpacity(0.12)
+                                : isSelected
+                                ? const Color(0xFFE53935).withOpacity(0.08)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              if (_isDeleteMode) ...[
+                                Container(
+                                  width: 18,
+                                  height: 18,
+                                  margin: const EdgeInsets.only(right: 10),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFFE53935)
+                                        : Colors.transparent,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? const Color(0xFFE53935)
+                                          : Colors.grey.shade300,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: isSelected
+                                      ? const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 12,
+                                        )
+                                      : null,
+                                ),
+                              ],
+
+                              Expanded(
+                                child: Text(
+                                  chat.title,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: isActive && !_isDeleteMode
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                    color: isSelected
+                                        ? const Color(0xFFE53935)
+                                        : const Color(0xFF1A1A2E),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   );
