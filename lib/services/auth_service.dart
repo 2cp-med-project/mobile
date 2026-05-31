@@ -15,7 +15,8 @@ class AuthService {
     required String phone,
     required String password,
     String role = 'patient',
-  }) async {
+  }) 
+  async {
 
     try {
       final res = await ApiClient.post(
@@ -27,6 +28,7 @@ class AuthService {
         },
         auth: false,
       );
+      print('🔵 LOGIN RAW RESPONSE: success=${res.success}, data=${res.data}, error=${res.error}');
 
       if (!res.success) {
         return res.error ?? 'Échec de connexion';
@@ -72,9 +74,7 @@ class AuthService {
       return e.toString();
     }
   }
-  /// - "0556123456"  -> "+213556123456"
-/// - "0556 12 34 56" -> "+213556123456"
-/// - "+213556123456" -> stays "+213556123456"
+  
 
 
   // ─────────────────────────────────────────────

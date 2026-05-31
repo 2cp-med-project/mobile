@@ -11,9 +11,9 @@ class ApiClient {
   static const Duration _timeout =
       Duration(seconds: 20);
  //static const baseUrl = 'http://192.168.30.54:5000/api'; 
-  static const baseUrl = 'http://172.23.213.202:5000/api'; 
-
-  //  Headers 
+  //static const baseUrl = 'http://172.23.213.202:5000/api'; 
+static const baseUrl = 'http://192.168.1.13:5000/api'; // Android emulator localhost
+ 
 
   static Future<Map<String, String>> _headers({
     bool auth = true,
