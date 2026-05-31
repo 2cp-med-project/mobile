@@ -1,135 +1,55 @@
-<!-- # 🏥 Healio — Plateforme de Santé Numérique (Algérie)
+# Mobile project — quick run commands
 
-## 📋 Description
+Prerequisites:
+- Node.js (>=14)
+- npm or yarn
+- Java JDK & Android SDK (for Android)
+- Xcode (for iOS, macOS only)
 
-**Healio** est une application mobile Flutter destinée aux **patients algériens**, conçue pour centraliser et simplifier la gestion de leur santé au quotidien. Elle connecte les patients à leurs médecins, leurs dossiers médicaux et un assistant IA de santé personnalisé.
+1. Install dependencies
 
----
+```bash
+# using npm
+npm install
 
-## 🎯 Objectif
-
-Permettre à chaque patient de :
-- Avoir **tout son parcours médical en un seul endroit**
-- Communiquer facilement avec ses médecins
-- Être alerté en temps réel des demandes d'accès à son dossier
-- Consulter et évaluer les médecins de sa région
-- Interagir avec un chatbot IA pour des questions de santé
-
----
-
-## ✨ Fonctionnalités
-
-### 🔐 Authentification
-- Inscription en 5 étapes (nom, prénom, date de naissance, localisation, contacts d'urgence, mot de passe)
-- Vérification OTP (email / téléphone)
-- Formulaire médical initial (groupe sanguin, allergies, antécédents...)
-- Connexion sécurisée avec token JWT
-
-### 🏠 Dashboard
-- Carte de bienvenue avec prochain rendez-vous
-- Accès rapide : Demandes, Dossier Médical, Assistant AI, Expériences
-- Liste des prochains rendez-vous
-- Liste des demandes récentes avec statuts (En attente / Acceptée / Refusée / Échec)
-
-### 📁 Gestion des Demandes d'Accès
-- Un médecin demande l'accès au dossier médical du patient
-- Le patient reçoit une **notification Firebase (FCM)** en temps réel
-- Modal de confirmation avec blur : **Accorder l'autorisation** ou **Refuser**
-- Historique des demandes avec statuts colorés
-
-### 🤖 Assistant IA (HealBot)
-- Chatbot médical alimenté par un **LLM backend**
-- Accès rapide : Mes rapports, Mes médicaments, Rendez-vous du jour
-- Envoi d'images depuis la galerie
-- Historique des conversations sauvegardé
-- Recherche et suppression de conversations
-
-### ⭐ Expériences des Patients
-- Liste des médecins avec notes et avis
-- Filtres par spécialité (Cardiologie, Neurologie, Dermatologie...)
-- Évaluation détaillée : Note globale, Ponctualité, Communication, Expertise, Écoute
-- Avis de la communauté
-
-### 👤 Profil Patient
-- Photo de profil + nom + ID patient
-- Contacts d'urgence
-- Modification des informations personnelles
-- Paramètres de notifications (RDV, demandes médecins)
-- Sécurité et confidentialité
-- Déconnexion
-
----
-
-## 🛠️ Stack Technique
-
-### Mobile (Flutter)
-| Package | Usage |
-|---|---|
-| `flutter_svg` | Icônes SVG |
-| `shared_preferences` | Stockage local (token, profil) |
-| `firebase_core` | Firebase init |
-| `firebase_messaging` | Notifications push (FCM) |
-| `image_picker` | Galerie photo |
-| `dio` | Requêtes HTTP vers backend |
-
-### Backend (à intégrer)
-- **Auth** : JWT (login, register, OTP)
-- **LLM** : Chatbot IA médical
-- **FCM** : Envoi de notifications push
-- **API REST** : RDV, dossiers, demandes, évaluations
-
----
-
-## 📱 Screens
-
-```
-Splash → SignIn → SignUp (5 étapes) → OTP → Formule → MedicalForm → Welcome
-                                                                        ↓
-                                                                   MainScreen
-                                                                   ├── Home
-                                                                   ├── RDV
-                                                                   ├── HealBot AI
-                                                                   ├── Carte Santé
-                                                                   ├── Dossier
-                                                                   └── Profil
+# or using yarn
+yarn install
 ```
 
----
+2. If this is an Expo project
 
-## 🔔 Notifications en Temps Réel
+```bash
+# start Metro / Expo dev server
+npx expo start
 
-Lorsqu'un médecin envoie une demande d'accès :
-1. Backend reçoit la demande
-2. Backend envoie une notification via **Firebase FCM** au token du patient
-3. L'app affiche un **modal avec blur** sur l'écran actif
-4. Le patient accepte ou refuse → réponse envoyée au backend
+# run on Android device/emulator
+npx expo run:android
 
----
+# run on iOS (macOS only)
+npx expo run:ios
+```
 
-## 🚧 Backend TODO (intégration finale)
+3. If this is a plain React Native (CLI) project
 
-- [ ] `POST /auth/login` → Connexion
-- [ ] `POST /auth/register` → Inscription
-- [ ] `POST /auth/otp/verify` → Vérification OTP
-- [ ] `GET /profile` → Profil patient
-- [ ] `GET /appointments/upcoming` → Prochains RDV
-- [ ] `GET /requests/pending` → Demandes en attente
-- [ ] `POST /requests/{id}/accept` → Accepter demande
-- [ ] `POST /requests/{id}/refuse` → Refuser demande
-- [ ] `GET /doctors` → Liste médecins
-- [ ] `POST /reviews` → Soumettre évaluation
-- [ ] `POST /chatbot/message` → Message LLM
-- [ ] `POST /fcm/token` → Enregistrer token FCM
-- [ ] `GET /chatbot/chats` → Historique conversations
+```bash
+# start Metro
+npx react-native start
 
----
+# run on Android (make sure emulator/device is connected)
+npx react-native run-android
 
-## 👨‍💻 Équipe
+# run on iOS (macOS only)
+npx react-native run-ios
+```
 
-Projet réalisé dans le cadre du **2CP** — Application mobile santé numérique pour l'Algérie.
+4. Troubleshooting
 
----
+```bash
+# clean install
+rm -rf node_modules && npm install
 
-## 📄 Licence
+# Android gradle clean (Android folder)
+cd android && ./gradlew clean && cd ..
+```
 
-Projet académique — tous droits réservés. -->
+Replace commands above with your project's specific scripts if package.json defines custom npm scripts.
