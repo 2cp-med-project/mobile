@@ -36,6 +36,7 @@ class Endpoints {
   static String accessRespond(String id) => '/access/$id/respond';// PUT  (patient)
   static const accessDoctorPatients = '/access/doctor/patients';  // GET  (doctor)
   static const accessPatientDoctors = '/access/patient/doctors';  // GET  (patient)
+<<<<<<< HEAD
   static String accessDelete(String id) => '/access/$id';         // DELETE (patient)
 
   // ── Chatbot 
@@ -46,6 +47,8 @@ static String chatbotById(String id) =>
 
 
 
+=======
+>>>>>>> 952d9e0 (before access screen)
   //appointment 
   static const String myAppointments = '/appointment/my';
   static const String addAppointment = '/appointment/add';
