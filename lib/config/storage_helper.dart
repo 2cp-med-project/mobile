@@ -22,14 +22,25 @@ class StorageHelper {
     String? token,
     String? refreshToken,
     String? patientId,
-    String? userId, // NEW
+    String? userId,
   }) async {
     final p = await _getPrefs();
 
-    await p.setString('nom', nom);
-    await p.setString('prenom', prenom);
-    await p.setString('phone', phone);
-    await p.setString('email', email);
+    // save user id first
+    if (userId != null) {
+      await p.setString('user_id', userId);
+    }
+
+    final uid = userId ?? p.getString('user_id');
+
+  print('UID INSIDE STORAGE: $uid');
+
+    if (uid != null) {
+      await p.setString('${uid}_nom', nom);
+      await p.setString('${uid}_prenom', prenom);
+      await p.setString('${uid}_phone', phone);
+      await p.setString('${uid}_email', email);
+    }
 
     if (token != null) {
       await p.setString('token', token);
@@ -42,22 +53,60 @@ class StorageHelper {
     if (patientId != null) {
       await p.setString('patient_id', patientId);
     }
-
-    if (userId != null) {
-      await p.setString('user_id', userId);
-    }
   }
 
-  // ── Getters
-  static Future<String?> getNom() async => (await _getPrefs()).getString('nom');
-  static Future<String?> getPrenom() async =>
-      (await _getPrefs()).getString('prenom');
+  // ── Getters (user-specific)
+  // ── Getters (PER USER)
+  static Future<String?> getNom() async {
+    final p = await _getPrefs();
+    final userId = p.getString('user_id');
+
+    if (userId == null) return null;
+
+    return p.getString('${userId}_nom');
+  }
+
+  static Future<String?> getPrenom() async {
+    final p = await _getPrefs();
+    final userId = p.getString('user_id');
+
+    if (userId == null) return null;
+
+    return p.getString('${userId}_prenom');
+  }
+
+  static Future<String?> getPatientId() async {
+    final p = await _getPrefs();
+    final userId = p.getString('user_id');
+
+    if (userId == null) return null;
+
+    return p.getString('${userId}_patient_id');
+  }
+
+  static Future<String?> getPhone() async {
+    final p = await _getPrefs();
+    final userId = p.getString('user_id');
+
+    if (userId == null) return null;
+
+    return p.getString('${userId}_phone');
+  }
+
+  static Future<String?> getEmail() async {
+    final p = await _getPrefs();
+    final userId = p.getString('user_id');
+
+    if (userId == null) return null;
+
+    return p.getString('${userId}_email');
+  }
+
   static Future<String?> getToken() async =>
       (await _getPrefs()).getString('token');
+
   static Future<String?> getRefreshToken() async =>
       (await _getPrefs()).getString('refresh_token');
-  static Future<String?> getPatientId() async =>
-      (await _getPrefs()).getString('patient_id');
 
   // ── Token management
   static Future<void> saveToken(String token) async {
@@ -65,7 +114,7 @@ class StorageHelper {
     await p.setString('token', token);
   }
 
-  // ── Profile image 
+  // ── Profile image
   static Future<void> saveProfileImage(String path) async {
     final p = await _getPrefs();
     await p.setString('profile_image_path', path);
@@ -88,11 +137,11 @@ class StorageHelper {
 
   // ── (logout)
   static Future<void> clear() async {
-  final p = await _getPrefs();
+    final p = await _getPrefs();
 
-  await p.remove('token');
-  await p.remove('refresh_token');
-  await p.remove('user_id');
-  await p.remove('patient_id');
-}
+    await p.remove('token');
+    await p.remove('refresh_token');
+    await p.remove('user_id');
+    await p.remove('patient_id');
+  }
 }

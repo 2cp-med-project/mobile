@@ -1,12 +1,10 @@
 // screens/dossier_screen.dart
 // Medical files screen — list, search, filter, view PDF, info panel
-// BACKEND TODO: replace all local demo data with GET /api/dossier/files
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
-import '../services/consultation_service.dart';
-import '../config/storage_helper.dart';
+import '../services/record_service.dart';
 
 class MedicalFile {
   final String id;
@@ -15,11 +13,27 @@ class MedicalFile {
   final String date;
   final String type;
 
+  final String? pdfUrl;
+  final String? aiSummary;
+
+  // consultation fields
+  final String? motive;
+  final String? symptoms;
+  final String? severity;
   final String? diagnosis;
   final String? treatmentPlan;
   final String? doctorNote;
+
+  final String? bloodPressure;
+  final String? heartRate;
+  final String? respiratoryRate;
+  final String? temperature;
+  final String? weight;
+
+  final String? systemReview;
+  final String? additionalTests;
   final String? status;
-  final String? severity;
+  final String? followUpDate;
 
   const MedicalFile({
     required this.id,
@@ -27,11 +41,27 @@ class MedicalFile {
     required this.doctorName,
     required this.date,
     required this.type,
+
+    this.pdfUrl,
+    this.aiSummary,
+
+    this.motive,
+    this.symptoms,
+    this.severity,
     this.diagnosis,
     this.treatmentPlan,
     this.doctorNote,
+
+    this.bloodPressure,
+    this.heartRate,
+    this.respiratoryRate,
+    this.temperature,
+    this.weight,
+
+    this.systemReview,
+    this.additionalTests,
     this.status,
-    this.severity,
+    this.followUpDate,
   });
 }
 
@@ -44,150 +74,111 @@ class DossierScreen extends StatefulWidget {
 
 class _DossierScreenState extends State<DossierScreen> {
   final _searchCtrl = TextEditingController();
-
+  List<MedicalFile> _files = [];
+  bool _loading = true;
   String _query = '';
+
   String? _filterType;
   String? _filterMedecin;
+  // 'asc' | 'desc'
   String _sortModifie = 'desc';
 
-  // Backend consultations converted to MedicalFile
-  List<MedicalFile> _consultations = [];
-
-  bool _loading = true;
-
-  // Dynamic doctors list
-  List<String> get _medecins {
-    final doctors = _consultations
-        .map((e) => e.doctorName)
-        .where((e) => e.trim().isNotEmpty)
-        .toSet()
-        .toList();
-
-    doctors.sort();
-    return doctors;
-  }
-
-  final _types = [
-    'Consultation',
-    'Analyse',
-    'Ordonnance',
-    'Radiologie',
-  ];
+  final _types = ['Consultation', 'Analyse', 'Ordonnance', 'Radiologie'];
+  final _medecins = ['Dr.Merazi', 'Dr.Belsoumati', 'Dr.xxxxx'];
 
   @override
   void initState() {
     super.initState();
-      debugPrint('DOSSIER SCREEN OPENED');
-
-    _loadConsultations();
+    _loadRecords();
   }
 
-Future<void> _loadConsultations() async {
-    debugPrint('LOAD CONSULTATIONS CALLED');
+  Future<void> _loadRecords() async {
+    setState(() => _loading = true);
 
-  try {
-    final patientId = await StorageHelper.getPatientId();
+    try {
+      final records = await RecordService.getConsultations();
 
-    debugPrint('PATIENT ID: $patientId');
+      print('📦 RAW RECORDS:');
+      print(records);
 
-    if (patientId == null || patientId.isEmpty) {
-      throw Exception('Patient ID not found');
+      final mapped = records.map<MedicalFile>((r) {
+        return MedicalFile(
+          id: r['_id']?.toString() ?? '',
+
+          // title shown in list
+          name: r['motive']?.toString().isNotEmpty == true
+              ? r['motive'].toString()
+              : 'Consultation médicale',
+
+          doctorName: 'Médecin',
+
+          date: r['date'] != null ? r['date'].toString().split('T')[0] : '',
+
+          type: r['typeofvisit']?.toString() ?? 'Consultation',
+
+          doctorNote: r['notes']?.toString(),
+
+          // consultation details
+          motive: r['motive']?.toString(),
+          symptoms: r['symptoms']?.toString(),
+          severity: r['severity']?.toString(),
+          diagnosis: r['diagnosis']?.toString(),
+          treatmentPlan: r['treatmentPlan']?.toString(),
+
+          // vitals
+          bloodPressure: r['bloodPressure']?.toString(),
+          heartRate: r['heartRate']?.toString(),
+          respiratoryRate: r['respiratoryRate']?.toString(),
+          temperature: r['temperature']?.toString(),
+          weight: r['weight']?.toString(),
+
+          // extra medical info
+          systemReview: r['systemReview']?.toString(),
+          additionalTests: r['additionalTests']?.toString(),
+
+          status: r['status']?.toString(),
+
+          followUpDate: r['followUpDate'] != null
+              ? r['followUpDate'].toString().split('T')[0]
+              : null,
+
+          aiSummary: r['resume']?.toString(),
+        );
+      }).toList();
+
+      setState(() {
+        _files = mapped;
+        _loading = false;
+      });
+
+      print('✅ MAPPED FILES: ${_files.length}');
+    } catch (e) {
+      print('❌ LOAD RECORDS ERROR: $e');
+
+      setState(() {
+        _loading = false;
+      });
     }
-
-    final data = await ConsultationService.getConsultations(
-      patientId: patientId,
-      order: _sortModifie,
-      sortBy: 'date',
-    );
-
-    debugPrint('RAW DATA: $data');
-
-
-    final files = data.map<MedicalFile>((c) {
-      debugPrint('ONE CONSULTATION: $c');
-
-      return MedicalFile(
-        id: c['_id'] ?? '',
-
-        name: c['typeofvisit']
-                    ?.toString()
-                    .trim()
-                    .isNotEmpty ==
-                true
-            ? c['typeofvisit']
-            : 'Consultation',
-
-        doctorName:
-            c['doctorId']?['fullName'] ??
-            c['doctorId']?['name'] ??
-            'Médecin',
-
-        date: c['date'] ?? '',
-
-        type: 'Consultation',
-
-        diagnosis: c['diagnosis'],
-        treatmentPlan: c['treatmentPlan'],
-        doctorNote: c['notes'],
-        status: c['status'],
-        severity: c['severity'],
-      );
-    }).toList();
-
-    debugPrint('FILES LENGTH: ${files.length}');
-
-    setState(() {
-      _consultations = files;
-      _loading = false;
-    });
-
-    debugPrint(
-      'STATE UPDATED → consultations: ${_consultations.length}',
-    );
-  } catch (e) {
-    debugPrint('Consultations error: $e');
-
-    setState(() {
-      _loading = false;
-    });
   }
-}
 
-  // FILTERED LIST
   List<MedicalFile> get _filtered {
-    var list = _consultations.where((f) {
+    var list = _files.where((f) {
       final q = _query.toLowerCase();
-
       if (q.isNotEmpty &&
           !f.name.toLowerCase().contains(q) &&
-          !f.doctorName.toLowerCase().contains(q)) {
+          !f.doctorName.toLowerCase().contains(q))
         return false;
-      }
-
-      if (_filterType != null && f.type != _filterType) {
+      if (_filterType != null && f.type != _filterType) return false;
+      if (_filterMedecin != null && f.doctorName != _filterMedecin)
         return false;
-      }
-
-      if (_filterMedecin != null &&
-          f.doctorName != _filterMedecin) {
-        return false;
-      }
-
       return true;
     }).toList();
 
-    list.sort((a, b) {
-      final da =
-          DateTime.tryParse(a.date) ?? DateTime.now();
-
-      final db =
-          DateTime.tryParse(b.date) ?? DateTime.now();
-
-      return _sortModifie == 'asc'
-          ? da.compareTo(db)
-          : db.compareTo(da);
-    });
-
+    list.sort(
+      (a, b) => _sortModifie == 'asc'
+          ? a.date.compareTo(b.date)
+          : b.date.compareTo(a.date),
+    );
     return list;
   }
 
@@ -207,21 +198,14 @@ Future<void> _loadConsultations() async {
             _buildSearchBar(),
             _buildFilterRow(),
             _buildColumnHeaders(),
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(),
-                    )
-                  : _buildFileList(),
-            ),
+            Expanded(child: _buildFileList()),
           ],
         ),
       ),
     );
   }
 
-
-  // ── Search bar 
+  // ── Search bar
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -253,7 +237,7 @@ Future<void> _loadConsultations() async {
     );
   }
 
-  // ── Filter chips ──────────────────────────────────────────────────────────
+  // ── Filter chips
   Widget _buildFilterRow() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -457,7 +441,7 @@ Future<void> _loadConsultations() async {
     );
   }
 
-  // ── Column headers ────────────────────────────────────────────────────────
+  // ── Column headers
   Widget _buildColumnHeaders() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
@@ -504,22 +488,31 @@ Future<void> _loadConsultations() async {
     );
   }
 
-  // ── File list ─────────────────────────────────────────────────────────────
+  // ── File list
   Widget _buildFileList() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     final files = _filtered;
+
     if (files.isEmpty) {
       return const Center(
         child: Text(
-          'Aucun fichier trouvé',
+          'Aucun dossier médical',
           style: TextStyle(color: AppColors.textGrey, fontSize: 14),
         ),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      itemCount: files.length,
-      itemBuilder: (_, i) =>
-          _FileRow(file: files[i], onTap: () => _openFile(files[i])),
+
+    return RefreshIndicator(
+      onRefresh: _loadRecords,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        itemCount: files.length,
+        itemBuilder: (_, i) =>
+            _FileRow(file: files[i], onTap: () => _openFile(files[i])),
+      ),
     );
   }
 
@@ -757,140 +750,263 @@ class _PdfPreviewState extends State<_PdfPreview> {
   double _zoom = 1.0;
   int _selPage = 0;
 
-  // Demo: 3 simulated pages
-  static const _pageCount = 3;
+  late List<List<Widget>> _pages;
 
+  @override
+  void initState() {
+    super.initState();
+    _buildPages();
+  }
+
+  // ─────────────────────────────────────────────
+  // PDF PAGE GENERATION
+  // ─────────────────────────────────────────────
+  void _buildPages() {
+    final file = widget.file;
+
+    final sections = <Widget>[
+      _pdfTitle('DOSSIER MÉDICAL'),
+
+      _pdfRow('Date', file.date),
+      _pdfRow('Médecin', file.doctorName),
+      _pdfRow('Type', file.type),
+      _pdfRow('Statut', file.status ?? '-'),
+
+      _divider(),
+
+      _pdfSection('Motif de consultation', file.motive),
+      _pdfSection('Symptômes', file.symptoms),
+      _pdfSection('Diagnostic', file.diagnosis),
+      _pdfSection('Traitement', file.treatmentPlan),
+      _pdfSection('Notes du médecin', file.doctorNote),
+
+      _divider(),
+
+      _pdfTitle('SIGNES VITAUX'),
+
+      _pdfRow('Tension artérielle', file.bloodPressure ?? '-'),
+      _pdfRow('Fréquence cardiaque', file.heartRate ?? '-'),
+      _pdfRow('Respiration', file.respiratoryRate ?? '-'),
+      _pdfRow('Température', file.temperature ?? '-'),
+      _pdfRow('Poids', file.weight ?? '-'),
+
+      _divider(),
+
+      _pdfSection('Examen du système', file.systemReview),
+      _pdfSection('Tests additionnels', file.additionalTests),
+
+      _pdfRow('Suivi prévu', file.followUpDate ?? '-'),
+    ];
+
+    _pages = [];
+    List<Widget> currentPage = [];
+
+    int sectionCounter = 0;
+
+    for (final section in sections) {
+      currentPage.add(section);
+
+      sectionCounter++;
+
+      // split page every 7 blocks
+      if (sectionCounter >= 7) {
+        _pages.add(List.from(currentPage));
+        currentPage.clear();
+        sectionCounter = 0;
+      }
+    }
+
+    if (currentPage.isNotEmpty) {
+      _pages.add(currentPage);
+    }
+
+    if (_pages.isEmpty) {
+      _pages.add([
+        const Center(
+          child: Text('Aucune donnée disponible'),
+        ),
+      ]);
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────
+
+  Widget _divider() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 12),
+      child: Divider(),
+    );
+  }
+
+  Widget _pdfTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Center(
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _pdfRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label :',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pdfSection(String title, String? content) {
+    if (content == null || content.trim().isEmpty) {
+      return const SizedBox();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            content,
+            style: const TextStyle(height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // UI
+  // ─────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // ── Toolbar ─────────────────────────────────────────────────────
+        // Toolbar
         Container(
           color: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 6,
+          ),
           child: Row(
             children: [
-              // Pages icon (left of zoom)
               const Icon(
                 Icons.grid_view_rounded,
                 color: AppColors.textGrey,
                 size: 18,
               ),
+
               const Spacer(),
+
               IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(
-                  Icons.zoom_out,
-                  color: AppColors.textGrey,
-                  size: 18,
-                ),
-                onPressed: () =>
-                    setState(() => _zoom = (_zoom - 0.25).clamp(0.5, 3.0)),
+                icon: const Icon(Icons.zoom_out),
+                onPressed: () {
+                  setState(() {
+                    _zoom = (_zoom - 0.25).clamp(0.5, 3.0);
+                  });
+                },
               ),
-              const SizedBox(width: 8),
-              Text(
-                '${(_zoom * 100).round()}%',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textDark,
-                ),
-              ),
-              const SizedBox(width: 8),
+
+              Text('${(_zoom * 100).round()}%'),
+
               IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(
-                  Icons.zoom_in,
-                  color: AppColors.textGrey,
-                  size: 18,
-                ),
-                onPressed: () =>
-                    setState(() => _zoom = (_zoom + 0.25).clamp(0.5, 3.0)),
+                icon: const Icon(Icons.zoom_in),
+                onPressed: () {
+                  setState(() {
+                    _zoom = (_zoom + 0.25).clamp(0.5, 3.0);
+                  });
+                },
               ),
-              const Spacer(),
-              const Icon(Icons.more_horiz, color: AppColors.textGrey, size: 18),
             ],
           ),
         ),
 
-        // ── Body: pages panel + main view ───────────────────────────────
         Expanded(
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Left: pages panel ──────────────────────────────────
+              // Left thumbnails
               Container(
                 width: 72,
                 color: const Color(0xFFE8F5F1),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Text(
-                        'PAGES',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textGrey.withValues(alpha: 0.8),
-                          letterSpacing: 0.5,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(6),
+                  itemCount: _pages.length,
+                  itemBuilder: (_, i) {
+                    final selected = i == _selPage;
+
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selPage = i;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: selected
+                                ? AppColors.primary
+                                : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Page ${i + 1}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
-                        ),
-                        itemCount: _pageCount,
-                        itemBuilder: (_, i) {
-                          final selected = i == _selPage;
-                          return GestureDetector(
-                            onTap: () => setState(() => _selPage = i),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: selected
-                                      ? AppColors.primary
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                                borderRadius: BorderRadius.circular(4),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: _buildPageThumb(i),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
 
-              // ── Right: main PDF view ────────────────────────────────
+              // PDF page
               Expanded(
                 child: Container(
                   color: const Color(0xFFF0FAF7),
                   child: InteractiveViewer(
                     minScale: 0.5,
-                    maxScale: 3.0,
+                    maxScale: 3,
                     child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Transform.scale(
-                          scale: _zoom,
-                          child: _buildMainPage(_selPage),
-                        ),
+                      child: Transform.scale(
+                        scale: _zoom,
+                        child: _buildMainPage(_selPage),
                       ),
                     ),
                   ),
@@ -903,128 +1019,50 @@ class _PdfPreviewState extends State<_PdfPreview> {
     );
   }
 
-  // Small thumbnail for the pages panel
-  Widget _buildPageThumb(int page) {
+  // ─────────────────────────────────────────────
+  // PDF PAGE VIEW
+  // ─────────────────────────────────────────────
+  Widget _buildMainPage(int page) {
     return Container(
-      height: 70,
+      width: 330,
+      height: 650,
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(2),
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+          ),
+        ],
       ),
-      padding: const EdgeInsets.all(4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // green header bar
-          Container(
-            height: 4,
-            color: AppColors.primary,
-            margin: const EdgeInsets.only(bottom: 4),
-          ),
-          // text lines
-          ...List.generate(
-            page == 0 ? 3 : 2,
-            (_) => Container(
-              height: 3,
-              margin: const EdgeInsets.only(bottom: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD6EEE8),
-                borderRadius: BorderRadius.circular(1),
-              ),
-            ),
-          ),
-          if (page == 0) ...[
-            const SizedBox(height: 2),
-            Container(
-              height: 10,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAF6F2),
-                borderRadius: BorderRadius.circular(2),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.2),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ..._pages[page],
+
+            const SizedBox(height: 20),
+
+            Center(
+              child: Text(
+                'Page ${page + 1}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey,
                 ),
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
+}
 
-  // Full-size page for the main viewer
- Widget _buildMainPage(int page) {
-  return Container(
-    width: 240,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(4),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.08),
-          blurRadius: 10,
-          offset: const Offset(0, 3),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          height: 6,
-          color: AppColors.primary,
-          margin: const EdgeInsets.only(bottom: 16),
-        ),
-
-        Text(
-          widget.file.name,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-
-        const SizedBox(height: 8),
-
-        Text('Médecin: ${widget.file.doctorName}'),
-        Text('Date: ${widget.file.date}'),
-
-        const Divider(height: 30),
-
-        const Text(
-          'Diagnostic',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        Text(widget.file.diagnosis ?? 'Non renseigné'),
-
-        const SizedBox(height: 16),
-
-        const Text(
-          'Traitement',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        Text(widget.file.treatmentPlan ?? 'Non renseigné'),
-
-        const SizedBox(height: 16),
-
-        const Text(
-          'Notes du médecin',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        Text(widget.file.doctorNote ?? 'Aucune note'),
-
-        const SizedBox(height: 16),
-
-        Text('Statut: ${widget.file.status ?? 'N/A'}'),
-        Text('Sévérité: ${widget.file.severity ?? 'N/A'}'),
-      ],
-    ),
-  );
-}}
-
-// ─────────────────────────────────────────────────────────────────────────────
 //  INFO PANEL
-// ─────────────────────────────────────────────────────────────────────────────
 class _InfoPanel extends StatefulWidget {
   final MedicalFile file;
   const _InfoPanel({required this.file});
@@ -1161,41 +1199,9 @@ class _InfoPanelState extends State<_InfoPanel> {
                     height: 1.5,
                   ),
                 ),
-
-    if (widget.file.diagnosis != null) ...[
-      const SizedBox(height: 12),
-      Text(
-        'Diagnostic: ${widget.file.diagnosis}',
-        style: const TextStyle(
-          fontSize: 13,
-          color: AppColors.textDark,
-        ),
-      ),
-    ],
-
-    if (widget.file.treatmentPlan != null) ...[
-      const SizedBox(height: 12),
-      Text(
-        'Traitement: ${widget.file.treatmentPlan}',
-        style: const TextStyle(
-          fontSize: 13,
-          color: AppColors.textDark,
-        ),
-      ),
-    ],
-
-    if (widget.file.status != null) ...[
-      const SizedBox(height: 12),
-      Text(
-        'Statut: ${widget.file.status}',
-        style: const TextStyle(
-          fontSize: 13,
-          color: AppColors.textDark,
-        ),
-      ),
-    ],
-  ],
-),),
+              ],
+            ),
+          ),
 
           const SizedBox(height: 24),
 

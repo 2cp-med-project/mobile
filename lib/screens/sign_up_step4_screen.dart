@@ -21,7 +21,7 @@ class SignUpStep4Screen extends StatefulWidget {
 
 class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
   // Single contact — always required
-  final _nameCtrl  = TextEditingController();
+  final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   String? _nameError;
   String? _phoneError;
@@ -35,7 +35,7 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
 
   Future<void> _onSuivant() async {
     setState(() {
-      _nameError  = _nameCtrl.text.trim().isEmpty  ? 'Requis' : null;
+      _nameError = _nameCtrl.text.trim().isEmpty ? 'Requis' : null;
       _phoneError = _phoneCtrl.text.trim().isEmpty ? 'Requis' : null;
     });
     if (_nameError != null || _phoneError != null) return;
@@ -43,12 +43,9 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
     // Persist as a single-item list (keeps API shape consistent)
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'emergency_contacts',
+      'signup_temp_emergency_contacts',
       jsonEncode([
-        {
-          'name':  _nameCtrl.text.trim(),
-          'phone': _phoneCtrl.text.trim(),
-        }
+        {'name': _nameCtrl.text.trim(), 'phone': _phoneCtrl.text.trim()},
       ]),
     );
 
@@ -115,8 +112,7 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
                           controller: _nameCtrl,
                           hint: 'Nom complet',
                           errorText: _nameError,
-                          onChanged: (_) =>
-                              setState(() => _nameError = null),
+                          onChanged: (_) => setState(() => _nameError = null),
                         ),
                         const SizedBox(height: 8),
                         AppTextField(
@@ -124,8 +120,7 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
                           hint: 'Numéro de téléphone',
                           keyboardType: TextInputType.phone,
                           errorText: _phoneError,
-                          onChanged: (_) =>
-                              setState(() => _phoneError = null),
+                          onChanged: (_) => setState(() => _phoneError = null),
                         ),
                       ],
                     ),

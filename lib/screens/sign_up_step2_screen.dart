@@ -21,10 +21,10 @@ class SignUpStep2Screen extends StatefulWidget {
 
 class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
   // Date — kept as free text fields exactly as before
-  final _jourController  = TextEditingController();
-  final _moisController  = TextEditingController();
+  final _jourController = TextEditingController();
+  final _moisController = TextEditingController();
   final _anneeController = TextEditingController();
-  final _lieuController  = TextEditingController();
+  final _lieuController = TextEditingController();
 
   // Gender — chosen from bottom sheet instead of typed
   String? _sexe;
@@ -63,7 +63,8 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
             // handle bar
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
@@ -71,18 +72,21 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                 ),
               ),
             ),
-            const Text('Genre',
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87)),
+            const Text(
+              'Genre',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
+            ),
             const SizedBox(height: 14),
             ...options.map((opt) {
               final selected = _sexe == opt;
               return GestureDetector(
                 onTap: () {
                   setState(() {
-                    _sexe      = opt;
+                    _sexe = opt;
                     _sexeError = null;
                   });
                   Navigator.pop(context);
@@ -91,7 +95,9 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: selected
                         ? AppColors.primary.withValues(alpha: 0.1)
@@ -102,19 +108,25 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                       width: 1.5,
                     ),
                   ),
-                  child: Row(children: [
-                    Text(opt,
+                  child: Row(
+                    children: [
+                      Text(
+                        opt,
                         style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: selected
-                                ? AppColors.primary
-                                : Colors.black87)),
-                    const Spacer(),
-                    if (selected)
-                      const Icon(Icons.check_circle,
-                          color: AppColors.primary, size: 18),
-                  ]),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: selected ? AppColors.primary : Colors.black87,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (selected)
+                        const Icon(
+                          Icons.check_circle,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
+                    ],
+                  ),
                 ),
               );
             }),
@@ -126,32 +138,37 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
 
   void _onSuivantePressed() async {
     setState(() {
-      _jourError  = null;
-      _moisError  = null;
+      _jourError = null;
+      _moisError = null;
       _anneeError = null;
-      _lieuError  = null;
-      _sexeError  = null;
+      _lieuError = null;
+      _sexeError = null;
     });
 
-    setState(() => _jourError  = Validators.day(_jourController.text));
-    setState(() => _moisError  = Validators.month(_moisController.text));
+    setState(() => _jourError = Validators.day(_jourController.text));
+    setState(() => _moisError = Validators.month(_moisController.text));
     setState(() => _anneeError = Validators.year(_anneeController.text));
-    setState(() => _lieuError  = Validators.required(_lieuController.text));
-    setState(() => _sexeError  = _sexe == null ? 'Requis' : null);
+    setState(() => _lieuError = Validators.required(_lieuController.text));
+    setState(() => _sexeError = _sexe == null ? 'Requis' : null);
 
-    if (_jourError != null || _moisError != null || _anneeError != null ||
-        _lieuError != null || _sexeError != null) return;
+    if (_jourError != null ||
+        _moisError != null ||
+        _anneeError != null ||
+        _lieuError != null ||
+        _sexeError != null)
+      return;
 
-    // ── Persist step 2 data ──────────────────────────────────────────────
+    // ── Persist step 2 data 
     final prefs = await SharedPreferences.getInstance();
     final dateFormatted =
         '${_jourController.text.trim().padLeft(2, '0')} / '
         '${_moisController.text.trim().padLeft(2, '0')} / '
         '${_anneeController.text.trim()}';
-    await prefs.setString('date_naissance', dateFormatted);
-    await prefs.setString('lieu_naissance', _lieuController.text.trim());
-    await prefs.setString('genre',          _sexe!);
-    // ─────────────────────────────────────────────────────────────────────
+    const uid = 'signup_temp';
+
+    await prefs.setString('${uid}_date_naissance', dateFormatted);
+    await prefs.setString('${uid}_lieu_naissance', _lieuController.text.trim());
+    await prefs.setString('${uid}_genre', _sexe!);
 
     if (!mounted) return;
     Navigator.push(
@@ -180,9 +197,10 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                     child: Text(
                       'Informations générales',
                       style: TextStyle(
-                          color: Colors.black87,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700),
+                        color: Colors.black87,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -191,7 +209,10 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                       'Veuillez indiquer votre date et lieu\n de naissance ainsi que votre genre.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: Colors.black54, fontSize: 12, height: 1.5),
+                        color: Colors.black54,
+                        fontSize: 12,
+                        height: 1.5,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -248,8 +269,7 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
                     onTap: _pickGender,
                     child: AbsorbPointer(
                       child: AppTextField(
-                        controller:
-                            TextEditingController(text: _sexe ?? ''),
+                        controller: TextEditingController(text: _sexe ?? ''),
                         hint: 'Sexe',
                         errorText: _sexeError,
                         suffixIcon: const Icon(
