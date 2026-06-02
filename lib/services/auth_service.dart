@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_client.dart';
 import '../config/api_endpoints.dart';
 import '../config/storage_helper.dart';
-import 'notification_service.dart';
+import 'notification_service.dart';  // single import
 
 class AuthService {
   // ─────────────────────────────────────────────
@@ -133,7 +133,7 @@ class AuthService {
   }
 
   // ─────────────────────────────────────────────
-  // REGISTER FCM TOKEN WITH BACKEND
+  // REGISTER FCM TOKEN USING NotificationService
   // ─────────────────────────────────────────────
   static Future<void> registerFCMTokenToBackend(String fcmToken) async {
     try {
@@ -160,7 +160,7 @@ class AuthService {
           print('❌ Backend rejected: ${response.error}');
         }
       } else {
-        print('⚠️ [DEBUG] FCM token is empty - not sent');
+        print('⚠️ [DEBUG] FCM token is NULL or empty - not sent');
       }
     } catch (e) {
       print('❌ [DEBUG] Exception in registerFCMTokenToBackend: $e');
@@ -169,7 +169,7 @@ class AuthService {
   }
 
   // ─────────────────────────────────────────────
-  // LOGOUT
+  // LOGOUT - Delete token on logout
   // ─────────────────────────────────────────────
   static Future<void> logout() async {
     try {
@@ -182,7 +182,8 @@ class AuthService {
   }
 
   // ─────────────────────────────────────────────
-  // OTP (Request & Verify)
+  // OTP code
+  // 1. Request OTP (before verification)
   // ─────────────────────────────────────────────
   static Future<String?> requestOtp(String contact, bool isEmail) async {
     final body = {
@@ -196,6 +197,7 @@ class AuthService {
     return response.error ?? 'Erreur lors de l\'envoi du code';
   }
 
+  // 2. Verify OTP (enter code received)
   static Future<String?> verifyOtp(String code, String phone) async {
     final body = {
       'code': code,
