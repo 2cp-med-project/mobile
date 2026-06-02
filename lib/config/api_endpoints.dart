@@ -23,6 +23,9 @@ class Endpoints {
   static String consultationById(String id) => '/records/consultation/$id'; // GET / PATCH
   static String recordsByPatient(String id) => '/records/$id'; // GET paginated
 
+  //AI Summary
+  static String summary(String consultationId) => '/summary/$consultationId'; // POST
+
   // ── Access (doctor ↔ patient permissions) 
   static const accessRequest        = '/access/request';          // POST (doctor)
   static const accessPatientRequests = '/access/patient/requests'; // GET  (patient)

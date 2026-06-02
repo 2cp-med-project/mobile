@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
 import '../services/record_service.dart';
+import '../services/summary_service.dart';
 
 class MedicalFile {
   final String id;
@@ -84,7 +85,6 @@ class _DossierScreenState extends State<DossierScreen> {
   String _sortModifie = 'desc';
 
   final _types = ['Consultation', 'Analyse', 'Ordonnance', 'Radiologie'];
-  final _medecins = ['Dr.Merazi', 'Dr.Belsoumati', 'Dr.xxxxx'];
 
   @override
   void initState() {
@@ -110,8 +110,7 @@ class _DossierScreenState extends State<DossierScreen> {
               ? r['motive'].toString()
               : 'Consultation médicale',
 
-          doctorName: 'Médecin',
-
+          doctorName: r['doctorName']?.toString() ?? 'Médecin',
           date: r['date'] != null ? r['date'].toString().split('T')[0] : '',
 
           type: r['typeofvisit']?.toString() ?? 'Consultation',
@@ -262,7 +261,11 @@ class _DossierScreenState extends State<DossierScreen> {
           _filterChip(
             label: 'Médecin',
             value: _filterMedecin,
-            options: _medecins,
+            options: _files
+                .map((f) => f.doctorName)
+                .where((d) => d.isNotEmpty)
+                .toSet()
+                .toList(),
             onSelect: (v) => setState(() => _filterMedecin = v),
           ),
         ],
@@ -620,9 +623,11 @@ class _FileViewerScreenState extends State<_FileViewerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0FAF7),
+
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new,
@@ -631,6 +636,7 @@ class _FileViewerScreenState extends State<_FileViewerScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
+
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -642,10 +648,11 @@ class _FileViewerScreenState extends State<_FileViewerScreen> {
                 color: AppColors.textDark,
               ),
             ),
+
             Text(
               _showInfo
                   ? 'Informations sur le fichier'
-                  : '${widget.file.date} · ${widget.file.doctorName}',
+                  : '${widget.file.date} · ${widget.file.doctorName.isNotEmpty ? widget.file.doctorName : "Médecin"}',
               style: TextStyle(
                 fontSize: 11,
                 color: _showInfo ? AppColors.primary : AppColors.textGrey,
@@ -653,81 +660,53 @@ class _FileViewerScreenState extends State<_FileViewerScreen> {
             ),
           ],
         ),
+
         actions: [
-          // Info tab — green when info panel is active
-          GestureDetector(
-            onTap: () => setState(() => _showInfo = !_showInfo),
-            child: Container(
-              margin: const EdgeInsets.only(right: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _showInfo ? AppColors.primary : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _showInfo
-                      ? AppColors.primary
-                      : AppColors.border.withValues(alpha: 0.5),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _showInfo = !_showInfo;
+              }),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 13,
-                    color: _showInfo ? Colors.white : AppColors.textGrey,
+                decoration: BoxDecoration(
+                  color: _showInfo ? AppColors.primary : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _showInfo
+                        ? AppColors.primary
+                        : AppColors.border.withValues(alpha: 0.5),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Info',
-                    style: TextStyle(
-                      fontSize: 12,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 14,
                       color: _showInfo ? Colors.white : AppColors.textGrey,
-                      fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Share tab
-          GestureDetector(
-            onTap: () {
-              // BACKEND TODO: POST /api/dossier/share/{id}
-            },
-            child: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppColors.border.withValues(alpha: 0.5),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Info',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _showInfo ? Colors.white : AppColors.textGrey,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(
-                    Icons.share_outlined,
-                    size: 13,
-                    color: AppColors.textGrey,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Partager',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textGrey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
         ],
       ),
+
       body: _showInfo
           ? _InfoPanel(file: widget.file)
           : _PdfPreview(file: widget.file),
@@ -821,11 +800,7 @@ class _PdfPreviewState extends State<_PdfPreview> {
     }
 
     if (_pages.isEmpty) {
-      _pages.add([
-        const Center(
-          child: Text('Aucune donnée disponible'),
-        ),
-      ]);
+      _pages.add([const Center(child: Text('Aucune donnée disponible'))]);
     }
   }
 
@@ -846,10 +821,7 @@ class _PdfPreviewState extends State<_PdfPreview> {
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -865,14 +837,10 @@ class _PdfPreviewState extends State<_PdfPreview> {
             width: 120,
             child: Text(
               '$label :',
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
-          Expanded(
-            child: Text(value),
-          ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
@@ -890,16 +858,10 @@ class _PdfPreviewState extends State<_PdfPreview> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           const SizedBox(height: 6),
-          Text(
-            content,
-            style: const TextStyle(height: 1.5),
-          ),
+          Text(content, style: const TextStyle(height: 1.5)),
         ],
       ),
     );
@@ -915,10 +877,7 @@ class _PdfPreviewState extends State<_PdfPreview> {
         // Toolbar
         Container(
           color: Colors.white,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 6,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(
             children: [
               const Icon(
@@ -1049,10 +1008,7 @@ class _PdfPreviewState extends State<_PdfPreview> {
             Center(
               child: Text(
                 'Page ${page + 1}',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey,
-                ),
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
               ),
             ),
           ],
@@ -1075,18 +1031,35 @@ class _InfoPanelState extends State<_InfoPanel> {
   bool _generatingSummary = false;
   String? _summary;
 
-  Future<void> _generateSummary() async {
-    setState(() => _generatingSummary = true);
-    // BACKEND TODO: POST /api/dossier/ai-summary/{id}
-    await Future.delayed(const Duration(seconds: 2));
+  @override
+  void initState() {
+    super.initState();
+
+    _summary = widget.file.aiSummary;
+  }
+
+ Future<void> _generateSummary() async {
+  setState(() => _generatingSummary = true);
+
+  try {
+    final summary = await SummaryService.generateSummary(
+      widget.file.id,
+    );
+
     setState(() {
-      _generatingSummary = false;
       _summary =
-          'Le patient présente une légère hypertension artérielle '
-          'stabilisée sous traitement. Aucune complication détectée '
-          'lors de cette consultation. Suivi recommandé dans 4 semaines.';
+          summary ?? 'Impossible de générer un résumé.';
+      _generatingSummary = false;
+    });
+  } catch (e) {
+    print('❌ GENERATE SUMMARY ERROR: $e');
+
+    setState(() {
+      _summary = 'Erreur lors de la génération.';
+      _generatingSummary = false;
     });
   }
+}
 
   @override
   Widget build(BuildContext context) {
