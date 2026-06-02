@@ -6,7 +6,12 @@ import 'storage_helper.dart';
 import 'api_endpoints.dart';
 
 class ApiClient {
+<<<<<<< HEAD
   //static const baseUrl ='http://10.58.114.26:5000/api';
+=======
+  static const baseUrl =
+      'http://10.68.13.26:5000/api';
+>>>>>>> origin/main
 
   static const Duration _timeout =
       Duration(seconds: 20);

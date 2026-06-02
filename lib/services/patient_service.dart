@@ -1,5 +1,6 @@
 import '../config/api_client.dart';
 import '../config/api_endpoints.dart';
+import '../config/storage_helper.dart';
 
 class PatientService {
   // ─────────────────────────────────────────────
@@ -10,7 +11,6 @@ class PatientService {
     Map<String, dynamic> data,
   ) async {
     try {
-      print('📤 UPDATE PROFILE REQUEST:');
       print(data);
 
       final res = await ApiClient.patch(
@@ -18,7 +18,6 @@ class PatientService {
         data,
       );
 
-      print('📥 UPDATE PROFILE RESPONSE:');
       print(res.data);
 
       if (!res.success) {
@@ -33,30 +32,38 @@ class PatientService {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // GET PROFILE
-  // GET /users/me
-  // ─────────────────────────────────────────────
-  static Future<Map<String, dynamic>?> getProfile() async {
-    try {
-      print('📤 GET PROFILE REQUEST');
 
-      final res = await ApiClient.get(
-        Endpoints.me, // '/users/me'
-      );
+static Future<Map<String, dynamic>?> getProfile() async {
+  try {
+    print('📤 GET PROFILE REQUEST');
 
-      print('📥 GET PROFILE RESPONSE:');
-      print(res.data);
+    final res = await ApiClient.get(
+      Endpoints.me,
+    );
 
-      if (!res.success || res.data == null) {
-        print('❌ ERROR: ${res.error}');
-        return null;
-      }
+    print(res.data);
 
-      return Map<String, dynamic>.from(res.data);
-    } catch (e) {
-      print('❌ EXCEPTION: $e');
+    if (!res.success || res.data == null) {
+      print('❌ ERROR: ${res.error}');
       return null;
     }
+
+    final profile = Map<String, dynamic>.from(res.data);
+
+    // SAVE PROFILE LOCALLY
+    await StorageHelper.saveUser(
+      nom: profile['lastName']?.toString() ?? '',
+      prenom: profile['firstName']?.toString() ?? '',
+      phone: profile['phone']?.toString() ?? '',
+      email: profile['email']?.toString() ?? '',
+      userId: profile['_id']?.toString() ?? '',
+      patientId: profile['_id']?.toString() ?? '',
+    );
+
+  
+    return profile;
+  } catch (e) {
+    print('❌ EXCEPTION: $e');
+    return null;
   }
-}
+} }

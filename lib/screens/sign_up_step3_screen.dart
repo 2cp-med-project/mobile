@@ -21,8 +21,8 @@ class SignUpStep3Screen extends StatefulWidget {
 
 class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
   final _adresseController = TextEditingController();
-  final _phoneController   = TextEditingController();
-  final _emailController   = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
 
   String? _adresseError;
   String? _phoneError;
@@ -39,13 +39,15 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
   void _onSuivantePressed() async {
     setState(() {
       _adresseError = null;
-      _phoneError   = null;
-      _emailError   = null;
+      _phoneError = null;
+      _emailError = null;
     });
 
-    setState(() => _adresseError = Validators.required(_adresseController.text));
-    setState(() => _phoneError   = Validators.phone(_phoneController.text));
-    setState(() => _emailError   = Validators.email(_emailController.text));
+    setState(
+      () => _adresseError = Validators.required(_adresseController.text),
+    );
+    setState(() => _phoneError = Validators.phone(_phoneController.text));
+    setState(() => _emailError = Validators.email(_emailController.text));
 
     if (_adresseError != null || _phoneError != null || _emailError != null) {
       return;
@@ -54,17 +56,19 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
     // ── Persist step 3 data ───────────────────────────────────────────────
     // Update StorageHelper with phone + email (nom/prenom already saved in step 1)
     final prefs = await SharedPreferences.getInstance();
-    final nom    = prefs.getString('nom')    ?? '';
+    final nom = prefs.getString('nom') ?? '';
     final prenom = prefs.getString('prenom') ?? '';
     await StorageHelper.saveUser(
-      nom:    nom,
+      nom: nom,
       prenom: prenom,
-      phone:  _phoneController.text.trim(),
-      email:  _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      email: _emailController.text.trim(),
+      userId: 'signup_temp',
     );
-    // Store adresse separately — StorageHelper doesn't have an adresse field yet
-    await prefs.setString('adresse', _adresseController.text.trim());
-    // ─────────────────────────────────────────────────────────────────────
+    await prefs.setString(
+      'signup_temp_adresse',
+      _adresseController.text.trim(),
+    ); 
 
     if (!mounted) return;
     Navigator.push(
@@ -93,16 +97,20 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
                     'Informations générales',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        color: Colors.black87,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700),
+                      color: Colors.black87,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   const Text(
                     'Veuillez saisir votre adresse, votre numéro\nde téléphone et votre adresse e-mail.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        color: Colors.black54, fontSize: 12, height: 1.5),
+                      color: Colors.black54,
+                      fontSize: 12,
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 35),
                   AppTextField(

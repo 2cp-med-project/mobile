@@ -46,6 +46,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       prenom: _prenomController.text.trim(),
       phone: '',
       email: '',
+      userId: 'signup_temp',
     );
 
     Navigator.push(

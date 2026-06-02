@@ -9,10 +9,10 @@ import '../config/storage_helper.dart';
 
 class UserService {
 
-  // ────────────────────────────────────────────────────────────────────────
+  
   //  GET CURRENT USER   GET /api/users/me
   //  Returns full patient profile — syncs to local cache
-  // ────────────────────────────────────────────────────────────────────────
+  
   static Future<Map<String, dynamic>?> getMe() async {
     final res = await ApiClient.get(Endpoints.me);
     if (!res.success) return null;

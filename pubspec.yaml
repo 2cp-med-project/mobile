@@ -23,6 +23,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.3
   flutter_lints: ^6.0.0
 
 flutter:
@@ -48,3 +49,9 @@ flutter:
     - assets/icons/message.svg
     - assets/icons/ai.svg
     - assets/icons/file.svg
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/healio.png"
+  min_sdk_android: 21

@@ -10,11 +10,15 @@ class StorageHelper {
     return _prefs!;
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // USER ID
+  // ──────────────────────────────────────────────────────────────────────────
   static Future<String?> getUserId() async =>
       (await _getPrefs()).getString('user_id');
 
-  // ── Core user fields ──────────────────────────────────────────────────────
-  // ✅ MERGED: both `userId` (from HEAD) and `fcmToken` (from incoming) are included.
+  // ──────────────────────────────────────────────────────────────────────────
+  // SAVE USER (with user‑specific fields and optional FCM token)
+  // ──────────────────────────────────────────────────────────────────────────
   static Future<void> saveUser({
     required String nom,
     required String prenom,
@@ -23,40 +27,83 @@ class StorageHelper {
     String? token,
     String? refreshToken,
     String? patientId,
-    String? userId,      // from HEAD
-    String? fcmToken,    // from incoming (e3f67ad)
+    String? userId,
+    String? fcmToken,          // from HEAD – keep
   }) async {
     final p = await _getPrefs();
 
-    await p.setString('nom', nom);
-    await p.setString('prenom', prenom);
-    await p.setString('phone', phone);
-    await p.setString('email', email);
+    // Save user id first (global)
+    if (userId != null) {
+      await p.setString('user_id', userId);
+    }
 
+    final uid = userId ?? p.getString('user_id');
+    print('UID INSIDE STORAGE: $uid');
+
+    if (uid != null) {
+      // User‑specific data stored under the user's ID
+      await p.setString('${uid}_nom', nom);
+      await p.setString('${uid}_prenom', prenom);
+      await p.setString('${uid}_phone', phone);
+      await p.setString('${uid}_email', email);
+    }
+
+    // Global tokens and identifiers
     if (token != null) await p.setString('token', token);
     if (refreshToken != null) await p.setString('refresh_token', refreshToken);
     if (patientId != null) await p.setString('patient_id', patientId);
-    if (userId != null) await p.setString('user_id', userId);       // from HEAD
-    if (fcmToken != null) await p.setString('fcm_token', fcmToken); // from incoming
+    if (fcmToken != null) await p.setString('fcm_token', fcmToken);
   }
 
-  // ── Getters ───────────────────────────────────────────────────────────────
-  static Future<String?> getNom() async =>
-      (await _getPrefs()).getString('nom');
-  static Future<String?> getPrenom() async =>
-      (await _getPrefs()).getString('prenom');
+  // ──────────────────────────────────────────────────────────────────────────
+  // GETTERS (user‑specific)
+  // ──────────────────────────────────────────────────────────────────────────
+  static Future<String?> getNom() async {
+    final p = await _getPrefs();
+    final userId = p.getString('user_id');
+    if (userId == null) return null;
+    return p.getString('${userId}_nom');
+  }
+
+  static Future<String?> getPrenom() async {
+    final p = await _getPrefs();
+    final userId = p.getString('user_id');
+    if (userId == null) return null;
+    return p.getString('${userId}_prenom');
+  }
+
+  static Future<String?> getPhone() async {
+    final p = await _getPrefs();
+    final userId = p.getString('user_id');
+    if (userId == null) return null;
+    return p.getString('${userId}_phone');
+  }
+
+  static Future<String?> getEmail() async {
+    final p = await _getPrefs();
+    final userId = p.getString('user_id');
+    if (userId == null) return null;
+    return p.getString('${userId}_email');
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // GLOBAL GETTERS (tokens, patient id, etc.)
+  // ──────────────────────────────────────────────────────────────────────────
   static Future<String?> getToken() async =>
       (await _getPrefs()).getString('token');
+
   static Future<String?> getRefreshToken() async =>
       (await _getPrefs()).getString('refresh_token');
+
   static Future<String?> getPatientId() async =>
       (await _getPrefs()).getString('patient_id');
 
-  // ✅ ADDED: getter for fcm_token (from incoming)
   static Future<String?> getFcmToken() async =>
       (await _getPrefs()).getString('fcm_token');
 
-  // ── Token management (from HEAD) ──────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
+  // TOKEN MANAGEMENT
+  // ──────────────────────────────────────────────────────────────────────────
   static Future<void> saveToken(String token) async {
     final p = await _getPrefs();
     await p.setString('token', token);
@@ -67,7 +114,9 @@ class StorageHelper {
     await p.setString('refresh_token', token);
   }
 
-  // ── Profile image (from HEAD) ─────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
+  // PROFILE IMAGE
+  // ──────────────────────────────────────────────────────────────────────────
   static Future<void> saveProfileImage(String path) async {
     final p = await _getPrefs();
     await p.setString('profile_image_path', path);
@@ -77,21 +126,25 @@ class StorageHelper {
     return (await _getPrefs()).getString('profile_image_path');
   }
 
-  // ── FCM Token separate method (from HEAD) ─────────────────────────────────
-  // ⚠️ Note: incoming version also saves fcmToken inside saveUser().
-  // Both are kept – this method allows saving token outside of user registration.
+  // ──────────────────────────────────────────────────────────────────────────
+  // FCM TOKEN (separate method for cases where user is not yet saved)
+  // ──────────────────────────────────────────────────────────────────────────
   static Future<void> saveFcmToken(String token) async {
     final p = await _getPrefs();
     await p.setString('fcm_token', token);
   }
 
-  // ── Auth check (from HEAD) ────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
+  // AUTHENTICATION CHECK
+  // ──────────────────────────────────────────────────────────────────────────
   static Future<bool> isLoggedIn() async {
     final p = await _getPrefs();
     return p.getString('token') != null;
   }
 
-  // ── Logout / clear (from HEAD, but enhanced to also remove fcm_token) ─────
+  // ──────────────────────────────────────────────────────────────────────────
+  // CLEAR ALL DATA (logout)
+  // ──────────────────────────────────────────────────────────────────────────
   static Future<void> clear() async {
     final p = await _getPrefs();
 
@@ -99,6 +152,9 @@ class StorageHelper {
     await p.remove('refresh_token');
     await p.remove('user_id');
     await p.remove('patient_id');
-    await p.remove('fcm_token'); // ✅ added for completeness
+    await p.remove('fcm_token');      // ensure FCM token is removed
+    // Note: user‑specific prefixed keys (e.g., '123_nom') are not removed
+    // because the user ID is gone – they become orphaned but harmless.
+    // If you want to clean them, you would need to iterate over all keys.
   }
 }
