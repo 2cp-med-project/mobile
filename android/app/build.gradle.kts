@@ -3,18 +3,7 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
 }
-
-/* apply(plugin = "com.google.gms.google-services") // ← move here, after plugins
- */
-
-/* dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
-  implementation("com.google.firebase:firebase-messaging") // ← add this for notifications
-
-} */
-
 
 android {
     namespace = "com.example.mobile"
@@ -29,7 +18,6 @@ android {
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
-
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).

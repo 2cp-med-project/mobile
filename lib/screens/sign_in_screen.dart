@@ -10,7 +10,8 @@ import '../config/validators.dart';
 import '../services/auth_service.dart';
 import 'sign_up_screen.dart';
 import 'forgot_password_screen.dart';
-import 'main_screen.dart';
+import 'main_screen.dart'; // ← import dashboard
+import '../config/app_routes.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -65,10 +66,15 @@ class _SignInScreenState extends State<SignInScreen> {
     }
 
     if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const MainScreen()),
-    );
+
+    // ── Go directly to dashboard (no token check for testing) ──────────────
+    final redirectRoute = ModalRoute.of(context)?.settings.arguments as String?;
+
+if (redirectRoute != null) {
+  Navigator.pushReplacementNamed(context, redirectRoute);
+} else {
+  Navigator.pushReplacementNamed(context, AppRoutes.home);
+}
   }
 
   @override
