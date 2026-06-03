@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
-import '../services/doctor_service.dart';  // ✅ import
+import '../services/doctor_service.dart';
 import 'doctor_review_screen.dart';
 
 class ExperiencesScreen extends StatefulWidget {
@@ -53,9 +53,9 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
     return _doctors.where((d) {
       final matchesSearch = query.isEmpty ||
           d.name.toLowerCase().contains(query) ||
-          d. specialization.toLowerCase().contains(query);
+          d.specialization.toLowerCase().contains(query);
       final matchesFilter = _selectedFilter == 0 ||
-          d. specialization == _filters[_selectedFilter];
+          d.specialization == _filters[_selectedFilter];
       return matchesSearch && matchesFilter;
     }).toList();
   }
@@ -90,7 +90,7 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
       ),
       body: Column(
         children: [
-          // Search bar (inchangé)
+          // Search bar
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Container(
@@ -107,7 +107,7 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
               ),
             ),
           ),
-          // Filtres
+          // Filters
           SizedBox(
             height: 36,
             child: ListView.builder(
@@ -134,7 +134,7 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          // Liste des médecins
+          // Doctor list
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -152,6 +152,7 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
                                 MaterialPageRoute(
                                   builder: (_) => DoctorReviewScreen(
                                     doctor: _filtered[i].toJson(),
+                                    doctorId: _filtered[i].id, // ✅ FIXED: pass doctorId
                                   ),
                                 ),
                               ),
@@ -164,7 +165,7 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
   }
 }
 
-// Carte d'un médecin
+// Doctor card widget (unchanged)
 class _DoctorCard extends StatelessWidget {
   final DoctorData doctor;
   final VoidCallback onTap;
@@ -191,7 +192,6 @@ class _DoctorCard extends StatelessWidget {
                 Text(doctor.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 Text(doctor.specialization, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                 const SizedBox(height: 4),
-                
                 const SizedBox(height: 6),
                 Row(
                   children: [
