@@ -1,387 +1,147 @@
+// lib/services/notification_service.dart
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'dart:ui';
-
-// ─── Background message handler (must be top-level function) ──────────────────
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('Background message: ${message.messageId}');
-}
-
-// ─── Notification Service ─────────────────────────────────────────────────────
+import '../screens/demandes_screen.dart';
+import '../config/app_routes.dart';
+import '../config/storage_helper.dart';
+import 'auth_service.dart';
 class NotificationService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-  // ── Global navigator key — allows showing modal from anywhere in the app ──
-  static final GlobalKey<NavigatorState> navigatorKey =
-      GlobalKey<NavigatorState>();
-
-  // ── Initialize ────────────────────────────────────────────────────────────
+  // ─── Initialisation ───────────────────────────────────────────────────────
   static Future<void> init() async {
-    // 1. Register background handler
+    // Handler pour le background (app fermée ou en arrière-plan)
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    // 2. Ask user permission
-    final settings = await _messaging.requestPermission(
+    
+    // Demander la permission
+    NotificationSettings settings = await _messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
-    debugPrint('Permission: ${settings.authorizationStatus}');
-
-    // 3. Get FCM token → give to backend
+    
+    debugPrint('📱 Permission status: ${settings.authorizationStatus}');
+    
+    // Récupérer le token FCM
     final token = await _messaging.getToken();
     debugPrint('✅ FCM Token: $token');
-    // TODO: await ApiService.saveFcmToken(token);
-
-    // 4. Token refresh
-    _messaging.onTokenRefresh.listen((newToken) {
+    
+    // Écouter le rafraîchissement du token
+    _messaging.onTokenRefresh.listen((newToken) async {
       debugPrint('🔄 Token refreshed: $newToken');
-      // TODO: await ApiService.saveFcmToken(newToken);
+    if (await StorageHelper.isLoggedIn()) {
+  // 👈 SEND NEW TOKEN TO BACKEND
+  await AuthService.registerFCMTokenToBackend(newToken);
+} else {
+  // Call the function directly through your StorageHelper class!
+  await StorageHelper.saveFcmToken(newToken); 
+}
+      
     });
 
-    // 5. App OPEN → notification arrives
+    // ─── Gestion des messages ─────────────────────────────────────────────
+    
+    // 1. Message reçu quand l'app est au premier plan (foreground)
     FirebaseMessaging.onMessage.listen((message) {
-      debugPrint('📩 Foreground: ${message.notification?.title}');
-      _handleIncomingRequest(message);
+      debugPrint('📩 Foreground message: ${message.notification?.title}');
+      _showInAppNotification(message.notification?.title, message.notification?.body);
     });
 
-    // 6. App BACKGROUND → user taps notification
+    // 2. Message ouvert depuis le background (app en arrière-plan)
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      debugPrint('📲 From background: ${message.notification?.title}');
-      _handleIncomingRequest(message);
+      debugPrint('📲 Opened from background: ${message.notification?.title}');
+      _navigateToDemandesScreen();
     });
 
-    // 7. App TERMINATED → user taps notification
-    final initial = await _messaging.getInitialMessage();
-    if (initial != null) {
-      debugPrint('🚀 From terminated: ${initial.notification?.title}');
-      _handleIncomingRequest(initial);
+    // 3. Message ouvert quand l'app était complètement fermée (terminated)
+    final RemoteMessage? initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      debugPrint('🚀 Opened from terminated: ${initialMessage.notification?.title}');
+      _navigateToDemandesScreen();
     }
   }
 
-  // ── Parse notification data and show modal ────────────────────────────────
-  static void _handleIncomingRequest(RemoteMessage message) {
-    final data = message.data;
+  // ─── Navigation simple vers DemandesScreen ────────────────────────────────
+  static void _navigateToDemandesScreen() async {
+  final context = navigatorKey.currentContext;
+  if (context == null) return;
 
-    final doctorName     = data['doctor_name']     ?? 'Médecin';
-    final doctorFullName = data['doctor_full_name'] ?? 'Médecin';
-    final specialty      = data['specialty']        ?? '';
-    final hospital       = data['hospital']         ?? '';
-    final date           = data['date']             ?? '';
-    final time           = data['time']             ?? '';
-    final isVerified     = data['is_verified']      == 'true';
-    final requestId      = data['request_id']       ?? '';
+  final isLoggedIn = await StorageHelper.isLoggedIn();
 
+  if (!isLoggedIn) {
+    Navigator.pushNamed(
+      context,
+      AppRoutes.signIn,
+      arguments: AppRoutes.request, // 👈 IMPORTANT
+    );
+    return;
+  }
+
+  Navigator.pushNamed(context, AppRoutes.request);
+}
+  // ─── Notification in-app (quand l'app est ouverte) ────────────────────────
+  static void _showInAppNotification(String? title, String? body) {
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
-    _showAuthorizationModal(
-      context,
-      doctorName:     doctorName,
-      doctorFullName: doctorFullName,
-      specialty:      specialty,
-      hospital:       hospital,
-      date:           date,
-      time:           time,
-      isVerified:     isVerified,
-      requestId:      requestId,
-    );
-  }
-
-  // ── Show blur modal on top of any screen ──────────────────────────────────
-  static void _showAuthorizationModal(
-    BuildContext context, {
-    required String doctorName,
-    required String doctorFullName,
-    required String specialty,
-    required String hospital,
-    required String date,
-    required String time,
-    required bool isVerified,
-    required String requestId,
-  }) {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
-      transitionBuilder: (ctx, animation, _, __) {
-        return Stack(
-          children: [
-            BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: animation.value * 5,
-                sigmaY: animation.value * 5,
-              ),
-              child: Container(
-                color: Colors.black.withValues(alpha: animation.value * 0.4),
-              ),
-            ),
-            FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.92, end: 1.0).animate(
-                  CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutBack,
-                  ),
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: _NotificationModal(
-                        doctorFullName: doctorFullName,
-                        specialty:      specialty,
-                        hospital:       hospital,
-                        date:           date,
-                        time:           time,
-                        isVerified:     isVerified,
-                        onAccept: () {
-                          Navigator.pop(ctx);
-                          // TODO: await DossierService.acceptRequest(requestId);
-                          _showSnackbar(context,
-                            '✅  Autorisation accordée',
-                            const Color(0xFF1FAF87),
-                          );
-                        },
-                        onRefuse: () {
-                          Navigator.pop(ctx);
-                          // TODO: await DossierService.refuseRequest(requestId);
-                          _showSnackbar(context,
-                            '❌  Demande refusée',
-                            const Color(0xFFE53935),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  static void _showSnackbar(BuildContext context, String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-}
-
-// ─── Modal Widget ─────────────────────────────────────────────────────────────
-class _NotificationModal extends StatelessWidget {
-  final String doctorFullName;
-  final String specialty;
-  final String hospital;
-  final String date;
-  final String time;
-  final bool isVerified;
-  final VoidCallback onAccept;
-  final VoidCallback onRefuse;
-
-  const _NotificationModal({
-    required this.doctorFullName,
-    required this.specialty,
-    required this.hospital,
-    required this.date,
-    required this.time,
-    required this.isVerified,
-    required this.onAccept,
-    required this.onRefuse,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Center(
-            child: Text(
-              'Demander une autorisation',
-              style: TextStyle(
-                fontSize: 16,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title ?? 'Nouvelle demande',
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
+                color: Colors.white,
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text('De :  ',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                        Text(doctorFullName,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A2E),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (isVerified)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1FAF87).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'Professionnel vérifié',
-                          style: TextStyle(
-                            color: Color(0xFF1FAF87),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 8),
-                    Text('$specialty - $hospital',
-                      style: TextStyle(
-                        fontSize: 13, color: Colors.grey.shade600),
-                    ),
-                    const SizedBox(height: 4),
-                    Text('Date : $date',
-                      style: TextStyle(
-                        fontSize: 12, color: Colors.grey.shade400),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(time,
-                      style: TextStyle(
-                        fontSize: 11, color: Colors.grey.shade400),
-                    ),
-                  ],
+            if (body != null)
+              Text(
+                body,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
                 ),
               ),
-              CircleAvatar(
-                radius: 34,
-                backgroundColor:
-                    const Color(0xFF1FAF87).withValues(alpha: 0.15),
-                child: const Icon(Icons.person,
-                  color: Color(0xFF1FAF87), size: 34),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: onRefuse,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE53935).withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: const Color(0xFFE53935).withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: const Text('Refuser',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFFE53935),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GestureDetector(
-                  onTap: onAccept,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1FAF87).withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: const Color(0xFF1FAF87).withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: const Text('Accorder l\'autorisation',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFF1FAF87),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
+        backgroundColor: const Color(0xFF1FAF87),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Voir',
+          textColor: Colors.white,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemandesScreen()),
+            );
+          },
+        ),
       ),
     );
   }
+
+  // ─── Méthode utilitaire pour obtenir le token ─────────────────────────────
+  static Future<String?> getToken() async {
+    return await _messaging.getToken();
+  }
+
+  // ─── Méthode pour supprimer le token (déconnexion) ────────────────────────
+  static Future<void> deleteToken() async {
+    await _messaging.deleteToken();
+    debugPrint('🗑️ FCM Token deleted');
+  }
 }
 
-// ─── BACKEND TODO ─────────────────────────────────────────────────────────────
-// - saveFcmToken(token)  → POST token to backend so they know your device
-// - onAccept             → await DossierService.acceptRequest(requestId)
-// - onRefuse             → await DossierService.refuseRequest(requestId)
-// - Backend notification data payload must include:
-//   {
-//     "doctor_name":     "Dr.Merazi",
-//     "doctor_full_name":"Dr.Merazi Jeo",
-//     "specialty":       "Cardiologue",
-//     "hospital":        "EPH SBA",
-//     "date":            "19/03/2026",
-//     "time":            "Il y a 2 minutes",
-//     "is_verified":     "true",
-//     "request_id":      "123"
-//   }
+// ─── Background Handler (app fermée ou en arrière-plan) ─────────────────────
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('🌙 Background message: ${message.messageId}');
+  debugPrint('📦 Background data: ${message.data}');
+}

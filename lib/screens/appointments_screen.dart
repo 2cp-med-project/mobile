@@ -1,43 +1,40 @@
 // screens/appointments_screen.dart
 // Mes Rendez-vous — weekly strip, upcoming & past appointments
-// + modal to add a new appointment (saved locally)
-// BACKEND TODO: replace local list with GET /api/appointments
-// BACKEND TODO: POST /api/appointments on save
+// + modal to add a new appointment
 
-import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_colors.dart';
 import '../widgets/top_bubbles.dart';
+import '../services/appointment_service.dart';
 
 //  MODEL
 class Appointment {
   final String id;
-  final String doctorName;
+  final String doctername;
   final String type;
   final String time;
   final DateTime date;
   final String note;
   final bool remind;
-  final String status; // 'confirmed' | 'pending' | 'termine'
-  final String? avatarAsset; // optional local asset
+  final String status; // 'scheduled' | 'confirmed' | 'completed'
+  final String? avatarAsset;
 
   Appointment({
     required this.id,
-    required this.doctorName,
+    required this.doctername,
     required this.type,
     required this.time,
     required this.date,
     this.note = '',
     this.remind = false,
-    this.status = 'pending',
+    this.status = 'scheduled',
     this.avatarAsset,
   });
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'doctorName': doctorName,
+        'doctername': doctername,
         'type': type,
         'time': time,
         'date': date.toIso8601String(),
@@ -47,71 +44,18 @@ class Appointment {
         'avatarAsset': avatarAsset,
       };
 
+  // Updated to match backend schema
   factory Appointment.fromJson(Map<String, dynamic> j) => Appointment(
-        id: j['id'] ?? '',
-        doctorName: j['doctorName'] ?? '',
-        type: j['type'] ?? '',
-        time: j['time'] ?? '',
-        date: DateTime.parse(j['date']),
-        note: j['note'] ?? '',
-        remind: j['remind'] ?? false,
-        status: j['status'] ?? 'pending',
-        avatarAsset: j['avatarAsset'],
+        id: j['_id']?.toString() ?? '',
+        doctername: j['doctername']?.toString() ?? '',
+        type: j['type']?.toString() ?? '',
+        time: j['time']?.toString() ?? '',
+        date: DateTime.tryParse(j['date']?.toString() ?? '') ?? DateTime.now(),
+        note: j['appointmentnotes']?.toString() ?? '',
+        remind: j['reminders'] == true,
+        status: j['status']?.toString() ?? 'scheduled',
+        avatarAsset: j['avatarAsset']?.toString(),
       );
-}
-
-//  STORAGE
-class _AppointmentStorage {
-  static const _key = 'appointments';
-
-  static Future<List<Appointment>> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    if (raw == null) return _demoData();
-    final list = List<Map<String, dynamic>>.from(jsonDecode(raw));
-    return list.map(Appointment.fromJson).toList();
-  }
-
-  static Future<void> save(List<Appointment> list) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(list.map((a) => a.toJson()).toList()));
-  }
-
-  // Demo seed data (first launch only)
-  static List<Appointment> _demoData() => [
-        Appointment(
-          id: '1',
-          doctorName: 'Dr.Merazi',
-          type: 'Cardiologie · Visite de suivi',
-          time: '10h00',
-          date: DateTime.now().add(const Duration(days: 2)),
-          status: 'confirmed',
-        ),
-        Appointment(
-          id: '2',
-          doctorName: 'Dr.Belsoumati',
-          type: 'Généraliste · Consultation',
-          time: '09h00',
-          date: DateTime(2025, 3, 8),
-          status: 'pending',
-        ),
-        Appointment(
-          id: '3',
-          doctorName: 'Laboratoire Allal',
-          type: 'Analyse en laboratoire',
-          time: '08h30',
-          date: DateTime(2025, 3, 22),
-          status: 'pending',
-        ),
-        Appointment(
-          id: '4',
-          doctorName: 'Dr.Merazi',
-          type: 'Cardiologie · Revue d\'ECG',
-          time: '11h00',
-          date: DateTime(2025, 3, 1),
-          status: 'termine',
-        ),
-      ];
 }
 
 //  MAIN SCREEN
@@ -134,72 +78,106 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     _load();
   }
 
+  // ── FETCH FROM API ─────────────────────────────────────────────────────
   Future<void> _load() async {
-    final list = await _AppointmentStorage.load();
-    setState(() {
-      _appointments = list;
-      _loading = false;
-    });
+    try {
+      setState(() => _loading = true);
+      final list = await AppointmentService.getMyAppointments();
+      setState(() {
+        _appointments = list;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _appointments = [];
+        _loading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
   }
 
+  // ── SAVE TO API THEN REFRESH ──────────────────────────────────────────
   Future<void> _addAppointment(Appointment appt) async {
-    setState(() => _appointments.insert(0, appt));
-    await _AppointmentStorage.save(_appointments);
-    setState(() => _showSuccess = true);
-    await Future.delayed(const Duration(seconds: 3));
-    if (mounted) setState(() => _showSuccess = false);
+    try {
+      // Save to backend
+      await AppointmentService.addAppointment(
+        doctername: appt.doctername,
+        type: appt.type,
+        time: appt.time,
+        date: appt.date,
+        note: appt.note,
+        remind: appt.remind,
+      );
+      
+      // Refresh the entire list from server
+      await _load();
+      
+      setState(() => _showSuccess = true);
+      await Future.delayed(const Duration(seconds: 3));
+      if (mounted) setState(() => _showSuccess = false);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
   }
 
-  List<Appointment> get _upcoming => _appointments
-      .where((a) =>
-          a.status != 'termine' &&
-          (a.date.isAfter(DateTime.now().subtract(const Duration(days: 1)))))
-      .toList()
-    ..sort((a, b) => a.date.compareTo(b.date));
+  
+  // ── GETTERS with proper status handling ────────────────────────────────
+List<Appointment> get _upcoming => _appointments
+    .where((a) => a.status == 'scheduled')  // ← Only show scheduled appointments
+    .toList()
+  ..sort((a, b) => a.date.compareTo(b.date));
 
-  List<Appointment> get _past => _appointments
-      .where((a) =>
-          a.status == 'termine' ||
-          a.date.isBefore(DateTime.now().subtract(const Duration(days: 1))))
-      .toList()
-    ..sort((a, b) => b.date.compareTo(a.date));
-
+List<Appointment> get _past => _appointments
+    .where((a) => a.status == 'done')  // ← Only show done appointments
+    .toList()
+  ..sort((a, b) => b.date.compareTo(a.date));
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0FAF7),
       body: Stack(
         children: [
-          // Background
           const Positioned.fill(child: TopBubbles()),
 
           SafeArea(
             child: _loading
                 ? const Center(
                     child: CircularProgressIndicator(color: AppColors.primary))
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildTopRow(),
-                        const SizedBox(height: 16),
-                        _buildWeekStrip(),
-                        const SizedBox(height: 28),
-                        _sectionTitle('Prochains rendez-vous'),
-                        const SizedBox(height: 12),
-                        if (_upcoming.isEmpty)
-                          _emptyCard('Aucun rendez-vous à venir')
-                        else
-                          ..._upcoming.map(_buildCard),
-                        const SizedBox(height: 28),
-                        _sectionTitle('Rendez-vous passé'),
-                        const SizedBox(height: 12),
-                        if (_past.isEmpty)
-                          _emptyCard('Aucun rendez-vous passé')
-                        else
-                          ..._past.map(_buildCard),
-                      ],
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildTopRow(),
+                          const SizedBox(height: 16),
+                          _buildWeekStrip(),
+                          const SizedBox(height: 28),
+                          _sectionTitle('Prochains rendez-vous'),
+                          const SizedBox(height: 12),
+                          if (_upcoming.isEmpty)
+                            _emptyCard('Aucun rendez-vous à venir')
+                          else
+                            ..._upcoming.map(_buildCard),
+                          const SizedBox(height: 28),
+                          _sectionTitle('Rendez-vous passé'),
+                          const SizedBox(height: 12),
+                          if (_past.isEmpty)
+                            _emptyCard('Aucun rendez-vous passé')
+                          else
+                            ..._past.map(_buildCard),
+                        ],
+                      ),
                     ),
                   ),
           ),
@@ -212,8 +190,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             left: 20,
             right: 20,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(14),
@@ -227,7 +204,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('⚠️', style: TextStyle(fontSize: 16)),
+                  Text('',style: TextStyle(fontSize: 16)),
                   SizedBox(width: 10),
                   Text(
                     'Votre rendez-vous médical a été ajouté !',
@@ -280,10 +257,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   // ── Week strip 
   Widget _buildWeekStrip() {
-    final now   = DateTime.now();
+    final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    // Strip always starts TODAY and shows the next 7 days
-    final days  = List.generate(7, (i) => today.add(Duration(days: i)));
+    final days = List.generate(7, (i) => today.add(Duration(days: i)));
     const allDayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
     final months = [
       '', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun',
@@ -323,7 +299,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               final isToday = d.day == now.day &&
                   d.month == now.month &&
                   d.year == now.year;
-              // dot = has appointment on this day
               final hasDot = _appointments.any((a) =>
                   a.date.day == d.day &&
                   a.date.month == d.month &&
@@ -396,32 +371,34 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   // ── Appointment card 
   Widget _buildCard(Appointment a) {
-    final months = [
-      '', 'Jan', 'Fév', 'Mars', 'Avr', 'Mai', 'Juin',
-      'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'
-    ];
-    final dateStr = '${a.date.day.toString().padLeft(2, '0')} '
-        '${months[a.date.month]}';
+  final months = [
+    '', 'Jan', 'Fév', 'Mars', 'Avr', 'Mai', 'Juin',
+    'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'
+  ];
+  final dateStr = '${a.date.day.toString().padLeft(2, '0')} '
+      '${months[a.date.month]}';
 
-    Color statusColor;
-    String statusLabel;
-    bool showDate = true;
+  Color statusColor;
+  String statusLabel;
+  bool showDate = true;
 
-    switch (a.status) {
-      case 'confirmed':
-        statusColor = AppColors.primary;
-        statusLabel = '✓ Confirmed';
-        showDate = false;
-        break;
-      case 'termine':
-        statusColor = AppColors.primary;
-        statusLabel = '✓ Terminé';
-        break;
-      default:
-        statusColor = const Color(0xFFFF9800);
-        statusLabel = '';
-        showDate = true;
-    }
+  switch (a.status) {
+    case 'confirmed':
+      statusColor = AppColors.primary;
+      statusLabel = '✓ Confirmé';
+      showDate = false;
+      break;
+    case 'done':  // ✅ Changed from 'completed' to 'done'
+      statusColor = AppColors.primary;
+      statusLabel = '✓ Terminé';
+      break;
+    default:  // 'scheduled'
+      statusColor = const Color(0xFFFF9800);
+      statusLabel = 'En attente';
+      showDate = true;
+  }
+  
+ 
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -442,7 +419,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(a.doctorName,
+                Text(a.doctername,
                     style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
@@ -468,7 +445,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                 color: statusColor,
                                 fontWeight: FontWeight.w600)),
                       ),
-                    ] else if (a.status == 'termine') ...[
+                    ] else if (a.status == 'done') ...[
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
@@ -510,7 +487,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // Avatar placeholder
           Container(
             width: 48,
             height: 48,
@@ -539,13 +515,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'close',
-      barrierColor: Colors.transparent, // we handle colour in transitionBuilder
+      barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 300),
       transitionBuilder: (ctx, anim, _, child) {
-        // Blur + dark tint as barrier, slide+fade for the card
         return Stack(
           children: [
-            // Blurred backdrop
             FadeTransition(
               opacity: anim,
               child: BackdropFilter(
@@ -556,7 +530,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 ),
               ),
             ),
-            // Modal card
             SlideTransition(
               position: Tween<Offset>(
                       begin: const Offset(0, 0.12), end: Offset.zero)
@@ -588,13 +561,13 @@ class _AddAppointmentModal extends StatefulWidget {
 
 class _AddAppointmentModalState extends State<_AddAppointmentModal> {
   final _doctorCtrl = TextEditingController();
-  final _timeCtrl   = TextEditingController();
-  final _noteCtrl   = TextEditingController();
+  final _timeCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
 
   final List<String> _types = [
-    'Consultation générale',
-    'Consultation spécialisée',
-    'Analyse en laboratoire',
+    'IRM-RADIO-SCANNER',
+    'ANALYSE',
+    'CONSULTATION',
   ];
   String? _selectedType;
   bool _typeDropdownOpen = false;
@@ -602,7 +575,6 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
   DateTime _selectedDate = DateTime.now();
   bool _remind = false;
 
-  // Validation errors
   String? _doctorError;
   String? _typeError;
   String? _timeError;
@@ -617,10 +589,9 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
 
   void _save() {
     setState(() {
-      _doctorError =
-          _doctorCtrl.text.trim().isEmpty ? 'Champ requis' : null;
-      _typeError   = _selectedType == null ? 'Champ requis' : null;
-      _timeError   = _timeCtrl.text.trim().isEmpty ? 'Champ requis' : null;
+      _doctorError = _doctorCtrl.text.trim().isEmpty ? 'Champ requis' : null;
+      _typeError = _selectedType == null ? 'Champ requis' : null;
+      _timeError = _timeCtrl.text.trim().isEmpty ? 'Champ requis' : null;
     });
     if (_doctorError != null || _typeError != null || _timeError != null) {
       return;
@@ -628,13 +599,13 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
 
     widget.onSave(Appointment(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      doctorName: _doctorCtrl.text.trim(),
+      doctername: _doctorCtrl.text.trim(),
       type: _selectedType!,
       time: _timeCtrl.text.trim(),
       date: _selectedDate,
       note: _noteCtrl.text.trim(),
       remind: _remind,
-      status: 'pending',
+      status: 'scheduled',
     ));
   }
 
@@ -709,7 +680,6 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Header 
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
                   child: Row(
@@ -734,32 +704,26 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // ── Scrollable fields 
                 Flexible(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Doctor name
                         _modalField(
                           controller: _doctorCtrl,
                           hint: 'Nom du Dr',
                           error: _doctorError,
-                          onChanged: (_) =>
-                              setState(() => _doctorError = null),
+                          onChanged: (_) => setState(() => _doctorError = null),
                         ),
                         const SizedBox(height: 12),
-
-                        // Type dropdown
                         _TypeDropdown(
                           types: _types,
                           selected: _selectedType,
                           isOpen: _typeDropdownOpen,
                           error: _typeError,
-                          onToggle: () => setState(
-                              () => _typeDropdownOpen = !_typeDropdownOpen),
+                          onToggle: () =>
+                              setState(() => _typeDropdownOpen = !_typeDropdownOpen),
                           onSelect: (t) => setState(() {
                             _selectedType = t;
                             _typeDropdownOpen = false;
@@ -767,8 +731,6 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
                           }),
                         ),
                         const SizedBox(height: 12),
-
-                        // Time
                         GestureDetector(
                           onTap: _pickTime,
                           child: AbsorbPointer(
@@ -782,8 +744,6 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
                           ),
                         ),
                         const SizedBox(height: 12),
-
-                        // Date — taps to open native DatePicker
                         GestureDetector(
                           onTap: _pickDate,
                           child: AbsorbPointer(
@@ -804,8 +764,6 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
                           ),
                         ),
                         const SizedBox(height: 6),
-
-                        // JJ/MM/AAAA hint + Rappelle-moi
                         Row(children: [
                           const Text('JJ/MM/AAAA',
                               style: TextStyle(
@@ -827,13 +785,10 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
                           ),
                         ]),
                         const SizedBox(height: 12),
-
-                        // Note
                         Container(
                           decoration: BoxDecoration(
                             border: Border.all(
-                                color: AppColors.border
-                                    .withValues(alpha: 0.5)),
+                                color: AppColors.border.withValues(alpha: 0.5)),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: TextField(
@@ -851,8 +806,6 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
                           ),
                         ),
                         const SizedBox(height: 16),
-
-                        // Save
                         Align(
                           alignment: Alignment.centerRight,
                           child: GestureDetector(
@@ -901,15 +854,13 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
           child: TextField(
             controller: controller,
             onChanged: onChanged,
-            style: const TextStyle(
-                fontSize: 13, color: AppColors.textDark),
+            style: const TextStyle(fontSize: 13, color: AppColors.textDark),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(
-                  color: AppColors.textGrey, fontSize: 13),
+              hintStyle: const TextStyle(color: AppColors.textGrey, fontSize: 13),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 13),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
               suffixIcon: suffix,
               suffixIconConstraints:
                   const BoxConstraints(minWidth: 40, minHeight: 0),
@@ -920,8 +871,7 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
           Padding(
             padding: const EdgeInsets.only(top: 3, left: 4),
             child: Text(error,
-                style: const TextStyle(
-                    color: AppColors.error, fontSize: 10)),
+                style: const TextStyle(color: AppColors.error, fontSize: 10)),
           ),
       ],
     );
@@ -972,8 +922,7 @@ class _TypeDropdown extends StatelessWidget {
                 bottomRight: Radius.circular(isOpen ? 0 : 12),
               ),
             ),
-            padding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 13),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             child: Row(
               children: [
                 Text(
@@ -1039,163 +988,9 @@ class _TypeDropdown extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 3, left: 4),
             child: Text(error!,
-                style: const TextStyle(
-                    color: AppColors.error, fontSize: 10)),
+                style: const TextStyle(color: AppColors.error, fontSize: 10)),
           ),
       ],
-    );
-  }
-}
-
-//  INLINE CALENDAR
-class _InlineCalendar extends StatefulWidget {
-  final DateTime selected;
-  final void Function(DateTime) onSelect;
-
-  const _InlineCalendar({required this.selected, required this.onSelect});
-
-  @override
-  State<_InlineCalendar> createState() => _InlineCalendarState();
-}
-
-class _InlineCalendarState extends State<_InlineCalendar> {
-  late DateTime _viewing; // month being viewed
-
-  @override
-  void initState() {
-    super.initState();
-    _viewing = DateTime(widget.selected.year, widget.selected.month);
-  }
-
-  void _prevMonth() =>
-      setState(() => _viewing = DateTime(_viewing.year, _viewing.month - 1));
-  void _nextMonth() =>
-      setState(() => _viewing = DateTime(_viewing.year, _viewing.month + 1));
-
-  @override
-  Widget build(BuildContext context) {
-    final months = [
-      '', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun',
-      'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'
-    ];
-    final dayLabels = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
-
-    final firstDay = DateTime(_viewing.year, _viewing.month, 1);
-    final daysInMonth =
-        DateTime(_viewing.year, _viewing.month + 1, 0).day;
-    // weekday: Mon=1 Sun=7 → offset 0-6
-    final startOffset = firstDay.weekday - 1;
-    final totalCells = startOffset + daysInMonth;
-    final rows = (totalCells / 7).ceil();
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          // Month navigation
-          Row(
-            children: [
-              Text(
-                '${months[_viewing.month]} ${_viewing.year}',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppColors.textDark),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: _prevMonth,
-                child: const Icon(Icons.chevron_left,
-                    color: AppColors.textGrey, size: 20),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _nextMonth,
-                child: const Icon(Icons.chevron_right,
-                    color: AppColors.textGrey, size: 20),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Day labels
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: dayLabels
-                .map((d) => SizedBox(
-                      width: 30,
-                      child: Text(d,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textGrey)),
-                    ))
-                .toList(),
-          ),
-          const SizedBox(height: 6),
-
-          // Grid
-          ...List.generate(rows, (row) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: List.generate(7, (col) {
-                  final cellIndex = row * 7 + col;
-                  final day = cellIndex - startOffset + 1;
-                  if (day < 1 || day > daysInMonth) {
-                    return const SizedBox(width: 30, height: 30);
-                  }
-                  final date = DateTime(_viewing.year, _viewing.month, day);
-                  final isSelected = date.day == widget.selected.day &&
-                      date.month == widget.selected.month &&
-                      date.year == widget.selected.year;
-                  final isToday = date.day == DateTime.now().day &&
-                      date.month == DateTime.now().month &&
-                      date.year == DateTime.now().year;
-
-                  return GestureDetector(
-                    onTap: () => widget.onSelect(date),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.primary
-                            : isToday
-                                ? AppColors.primaryLight
-                                : Colors.transparent,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$day',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: isSelected || isToday
-                                  ? FontWeight.w700
-                                  : FontWeight.normal,
-                              color: isSelected
-                                  ? Colors.white
-                                  : isToday
-                                      ? AppColors.primary
-                                      : AppColors.textDark),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            );
-          }),
-        ],
-      ),
     );
   }
 }

@@ -14,6 +14,8 @@ import 'main_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/user_service.dart';
 import '../services/patient_service.dart';
+import 'main_screen.dart'; // ← import dashboard
+import '../config/app_routes.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});

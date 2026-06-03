@@ -8,6 +8,7 @@ import '../screens/medical_form_screen.dart';
 import '../screens/welcome_screen.dart';
 import '../screens/forgot_password_screen.dart';
 import '../screens/main_screen.dart';
+import '../screens/demandes_screen.dart';
 
 class AppRoutes {
   // ── Route names 
@@ -20,8 +21,8 @@ class AppRoutes {
   static const welcome       = '/welcome';
   static const forgotPassword = '/forgot-password';
   static const home          = '/home';
-
-  // ── Route map 
+static const request       = '/request';
+  // ── Route map ──────────────────────────────────────────────────────────────
   static Map<String, WidgetBuilder> get routes => {
     splash:         (_) => const SplashScreen(),
     signIn:         (_) => const SignInScreen(),
@@ -32,5 +33,6 @@ class AppRoutes {
     welcome:        (_) => const WelcomeScreen(),
     forgotPassword: (_) => const ForgotPasswordScreen(),
     home:           (_) => const MainScreen(),
+    request:        (_) => const DemandesScreen(),
   };
 }

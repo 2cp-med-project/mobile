@@ -42,12 +42,5 @@ class AccessService {
     return list.cast<Map<String, dynamic>>();
   }
 
-  // ────────────────────────────────────────────────────────────────────────
-  //  REMOVE DOCTOR   DELETE /api/access/{id}
-  // ────────────────────────────────────────────────────────────────────────
-  static Future<String?> removeDoctor(String accessId) async {
-    final res = await ApiClient.delete(Endpoints.accessDelete(accessId));
-    if (!res.success) return res.error ?? 'Suppression échouée';
-    return null;
-  }
+  
 }
