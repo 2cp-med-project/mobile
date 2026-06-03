@@ -28,17 +28,20 @@ class Endpoints {
   static String consultationById(String id) => '/records/consultation/$id'; // GET / PATCH
   static String recordsByPatient(String id) => '/records/$id';              // GET paginated
 
+  // AI Summary
+  static String summary(String consultationId) => '/summary/$consultationId'; // POST
+
   // ── Access (doctor ↔ patient permissions) ────────────────────────────────
   static const accessRequest          = '/access/request';            // POST (doctor)
   static const accessPatientRequests  = '/access/patient/requests';   // GET  (patient)
   static String accessRespond(String id) => '/access/$id/respond';    // PUT  (patient)
   static const accessDoctorPatients   = '/access/doctor/patients';    // GET  (doctor)
   static const accessPatientDoctors   = '/access/patient/doctors';    // GET  (patient)
-  static String accessDelete(String id) => '/access/$id';             // DELETE (patient) – from HEAD
+  static String accessDelete(String id) => '/access/$id';             // DELETE (patient)
 
   // ── Chatbot ───────────────────────────────────────────────────────────────
-  static const chatbot = '/chatbot';                         // from HEAD
-  static String chatbotById(String id) => '/chatbot/$id';    // from HEAD
+  static const chatbot = '/chatbot';                         // POST
+  static String chatbotById(String id) => '/chatbot/$id';    // GET / PUT / DELETE
 
   // ── Appointment ───────────────────────────────────────────────────────────
   static const myAppointments = '/appointment/my';   // GET
