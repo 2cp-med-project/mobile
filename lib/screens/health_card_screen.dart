@@ -1,8 +1,7 @@
 // screens/health_card_screen.dart
 // Medical card — portrait card rotated 90° to appear landscape in screen
 // Tap or swipe horizontally to flip recto/verso
-// BACKEND TODO: patient_id, qr_code_url from GET /api/patient/card (Endpoints.me)
-// BACKEND TODO: profile picture URL from GET /users/me
+
 
 import 'dart:io';
 import 'dart:math' as math;
@@ -10,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_colors.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class HealthCardScreen extends StatefulWidget {
   const HealthCardScreen({super.key});
@@ -27,10 +27,10 @@ class _HealthCardScreenState extends State<HealthCardScreen>
   String _adresse = '';
   String _phone = '';
   String _groupe = '';
-  String _patientId = ''; // BACKEND TODO: from /users/me → cardQRCode
-  String? _qrCodeUrl; // BACKEND TODO: from /users/me → cardQRCode (URL)
-  String? _imagePath; // local file path (picked from gallery)
-  String? _imageUrl; // BACKEND TODO: avatar URL from server
+  String _patientId = ''; 
+  String? _qrCodeUrl; 
+  String? _imagePath; 
+  String? _imageUrl; 
 
   // ── Flip animation ────────────────────────────────────────────────────
   late AnimationController _ctrl;
@@ -69,7 +69,6 @@ class _HealthCardScreenState extends State<HealthCardScreen>
       _patientId = prefs.getString('patient_id') ?? '';
       _imagePath = prefs.getString('profile_image_path');
       _imageUrl = prefs.getString('profile_image_url');
-      // BACKEND TODO: _qrCodeUrl = prefs.getString('qr_code_url');
     });
   }
 
@@ -138,7 +137,7 @@ class _HealthCardScreenState extends State<HealthCardScreen>
                               ..rotateY(angle),
                             child: front
                                 ? _CardFront(
-                                    nom: '$_prenom $_nom'.trim(),
+                                    nom: '$_nom $_prenom '.trim(),
                                     dob: _dob,
                                     lieu: _lieu,
                                     adresse: _adresse,
@@ -199,9 +198,7 @@ class _HealthCardScreenState extends State<HealthCardScreen>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  CARD FRONT (recto)
-// ─────────────────────────────────────────────────────────────────────────────
 class _CardFront extends StatelessWidget {
   final String nom, dob, lieu, adresse, phone, groupe, patientId;
   final String? imagePath, imageUrl;
@@ -302,7 +299,7 @@ class _CardFront extends StatelessWidget {
 
           // Content
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+            padding: const EdgeInsets.fromLTRB(28, 14, 24, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -314,7 +311,7 @@ class _CardFront extends StatelessWidget {
                     const Text(
                       'Healio',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primary,
                       ),
@@ -327,11 +324,11 @@ class _CardFront extends StatelessWidget {
                 // ── Middle: photo + info ──────────────────────────────
                 Expanded(
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Photo 80×100
                       _PatientPhoto(imagePath: imagePath, imageUrl: imageUrl),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 28),
 
                       // Info
                       Expanded(
@@ -342,7 +339,7 @@ class _CardFront extends StatelessWidget {
                             Text(
                               nom.isEmpty ? 'Nom Prénom' : nom,
                               style: const TextStyle(
-                                fontSize: 15,
+                                fontSize: 17,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF1A1A1A),
                               ),
@@ -355,25 +352,26 @@ class _CardFront extends StatelessWidget {
                               color: const Color(0xFFC0DDD5),
                               value: _dobLine,
                             ),
-                            const SizedBox(height: 7),
+                            const SizedBox(height: 4),
                             _InfoRow(
                               label: 'ADRESSE',
                               color: const Color(0xFFC0DDD5),
                               value: adresse.isEmpty ? '—' : adresse,
                             ),
-                            const SizedBox(height: 7),
+                            const SizedBox(height: 4),
                             _InfoRow(
                               label: 'NUMÉRO DE TÉLÉPHONE',
                               color: const Color(0xFFC0DDD5),
                               value: phone.isEmpty ? '—' : phone,
                             ),
                             if (groupe.isNotEmpty) ...[
-                              const SizedBox(height: 7),
+                              const SizedBox(height: 4),
                               _InfoRow(
                                 label: 'GROUPE SANGUIN',
                                 color: const Color(0xFFC0DDD5),
                                 value: groupe,
                               ),
+                              const SizedBox(height: 7),
                             ],
                           ],
                         ),
@@ -383,17 +381,6 @@ class _CardFront extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 8),
-
-                // ── Bottom: patient ID ────────────────────────────────
-                Text(
-                  patientId.isEmpty ? '' : patientId,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A1A),
-                    letterSpacing: 0.8,
-                  ),
-                ),
               ],
             ),
           ),
@@ -403,9 +390,7 @@ class _CardFront extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  CARD BACK (verso)
-// ─────────────────────────────────────────────────────────────────────────────
 class _CardBack extends StatelessWidget {
   final String patientId;
   final String? qrCodeUrl;
@@ -484,7 +469,7 @@ class _CardBack extends StatelessWidget {
           ),
 
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+            padding: const EdgeInsets.fromLTRB(28, 14, 24, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -499,7 +484,7 @@ class _CardBack extends StatelessWidget {
                         const Text(
                           'Healio',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 17,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
                           ),
@@ -529,18 +514,15 @@ class _CardBack extends StatelessWidget {
                 ),
 
                 // QR code centred
+                // QR code centred
                 Expanded(
                   child: Center(
-                    child: qrCodeUrl != null
-                        ? Image.network(
-                            qrCodeUrl!,
-                            width: 110,
-                            height: 110,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) =>
-                                const _QrPlaceholder(),
-                          )
-                        : const _QrPlaceholder(),
+                    child: QrImageView(
+                      data: 'https://healio.foo/p/$patientId',
+                      version: QrVersions.auto,
+                      size: 110,
+                      backgroundColor: Colors.white,
+                    ),
                   ),
                 ),
 
@@ -549,7 +531,7 @@ class _CardBack extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'www.healio.dz',
+                      'www.healio.foo',
                       style: TextStyle(
                         fontSize: 10,
                         color: AppColors.primary,
@@ -576,9 +558,7 @@ class _CardBack extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  PATIENT PHOTO
-// ─────────────────────────────────────────────────────────────────────────────
 class _PatientPhoto extends StatelessWidget {
   final String? imagePath, imageUrl;
   const _PatientPhoto({this.imagePath, this.imageUrl});
@@ -607,8 +587,8 @@ class _PatientPhoto extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        width: 80,
-        height: 100,
+        width: 100,
+        height: 120,
         decoration: BoxDecoration(
           color: AppColors.primaryLight,
           borderRadius: BorderRadius.circular(8),
@@ -627,161 +607,22 @@ class _PatientPhoto extends StatelessWidget {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  QR PLACEHOLDER  (shown while backend hasn't provided URL yet)
-// BACKEND TODO: replace with Image.network(qrCodeUrl)
-// ─────────────────────────────────────────────────────────────────────────────
-class _QrPlaceholder extends StatelessWidget {
-  const _QrPlaceholder();
-  @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: const Size(110, 110), painter: _QrPainter());
-}
-
-class _QrPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size s) {
-    final black = Paint()
-      ..color = const Color(0xFF1A1A1A)
-      ..style = PaintingStyle.fill;
-    final white = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    final c = s.width / 21;
-
-    canvas.drawRect(Rect.fromLTWH(0, 0, s.width, s.height), white);
-
-    void r(double x, double y, double w, double h, Paint p) =>
-        canvas.drawRect(Rect.fromLTWH(x * c, y * c, w * c, h * c), p);
-
-    void finder(double ox, double oy) {
-      r(ox, oy, 7, 7, black);
-      r(ox + 1, oy + 1, 5, 5, white);
-      r(ox + 2, oy + 2, 3, 3, black);
-    }
-
-    finder(0, 0);
-    finder(14, 0);
-    finder(0, 14);
-    r(12, 12, 5, 5, black);
-    r(13, 13, 3, 3, white);
-    r(14, 14, 1, 1, black);
-    for (int i = 8; i <= 12; i += 2) {
-      r(i.toDouble(), 6, 1, 1, black);
-      r(6, i.toDouble(), 1, 1, black);
-    }
-    final rng = math.Random(0xAF87);
-    for (int row = 0; row < 21; row++) {
-      for (int col = 0; col < 21; col++) {
-        if (row < 9 && col < 9) continue;
-        if (row < 9 && col > 11) continue;
-        if (row > 11 && col < 9) continue;
-        if (row == 6 || col == 6) continue;
-        if (rng.nextBool() && rng.nextBool())
-          r(col.toDouble(), row.toDouble(), 1, 1, black);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 //  HEALIO LOGO MARK (small icon)
-// ─────────────────────────────────────────────────────────────────────────────
 class _LogoMark extends StatelessWidget {
+  const _LogoMark({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: CustomPaint(painter: _StethoPainter()),
+      width: 34,
+      height: 34,
+      padding: const EdgeInsets.all(4),
+      child: Image.asset('assets/images/healio.png', fit: BoxFit.contain),
     );
   }
 }
 
-class _StethoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size s) {
-    final p = Paint()
-      ..color = AppColors.primary
-      ..strokeWidth = 1.4
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    // Shield
-    final shield = Path()
-      ..moveTo(s.width * .5, s.height * .08)
-      ..cubicTo(
-        s.width * .88,
-        s.height * .08,
-        s.width * .92,
-        s.height * .28,
-        s.width * .92,
-        s.height * .44,
-      )
-      ..cubicTo(
-        s.width * .92,
-        s.height * .72,
-        s.width * .7,
-        s.height * .88,
-        s.width * .5,
-        s.height * .93,
-      )
-      ..cubicTo(
-        s.width * .3,
-        s.height * .88,
-        s.width * .08,
-        s.height * .72,
-        s.width * .08,
-        s.height * .44,
-      )
-      ..cubicTo(
-        s.width * .08,
-        s.height * .28,
-        s.width * .12,
-        s.height * .08,
-        s.width * .5,
-        s.height * .08,
-      );
-    canvas.drawPath(shield, p);
-    canvas.drawCircle(Offset(s.width * .5, s.height * .55), s.width * .14, p);
-    final tube = Path()
-      ..moveTo(s.width * .5, s.height * .41)
-      ..cubicTo(
-        s.width * .5,
-        s.height * .26,
-        s.width * .3,
-        s.height * .26,
-        s.width * .28,
-        s.height * .34,
-      );
-    canvas.drawPath(tube, p);
-    canvas.drawCircle(
-      Offset(s.width * .27, s.height * .33),
-      s.width * .04,
-      Paint()
-        ..color = AppColors.primary
-        ..style = PaintingStyle.fill,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 //  INFO ROW
-// ─────────────────────────────────────────────────────────────────────────────
 class _InfoRow extends StatelessWidget {
   final String label, value;
   final Color? color;
@@ -794,7 +635,7 @@ class _InfoRow extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 7.5,
+            fontSize: 9.5,
             fontWeight: FontWeight.w700,
             color: color ?? AppColors.textGrey,
             letterSpacing: 0.5,
@@ -804,7 +645,7 @@ class _InfoRow extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            fontSize: 11,
+            fontSize: 12.5,
             color: Color(0xFF1A1A1A),
             fontWeight: FontWeight.w400,
             height: 1.3,
