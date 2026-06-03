@@ -11,6 +11,9 @@ import '../services/auth_service.dart';
 import 'sign_up_screen.dart';
 import 'forgot_password_screen.dart';
 import 'main_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/user_service.dart';
+import '../services/patient_service.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -20,11 +23,11 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  final _phoneCtrl    = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
-  bool    _isLoading       = false;
-  bool    _passwordVisible = false; // ← eye toggle
+  bool _isLoading = false;
+  bool _passwordVisible = false; // ← eye toggle
   String? _phoneError;
   String? _passwordError;
   String? _serverError;
@@ -38,23 +41,24 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _onLoginPressed() async {
     setState(() {
-      _phoneError    = null;
+      _phoneError = null;
       _passwordError = null;
-      _serverError   = null;
+      _serverError = null;
     });
 
     setState(() {
-      _phoneError    = Validators.phone(_phoneCtrl.text);
+      _phoneError = Validators.phone(_phoneCtrl.text);
       _passwordError = Validators.password(_passwordCtrl.text);
     });
+
     if (_phoneError != null || _passwordError != null) return;
 
     setState(() => _isLoading = true);
 
     final error = await AuthService.login(
-      phone:    _phoneCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim(),
       password: _passwordCtrl.text,
-      role:     'patient',
+      role: 'patient',
     );
 
     setState(() => _isLoading = false);
@@ -64,7 +68,11 @@ class _SignInScreenState extends State<SignInScreen> {
       return;
     }
 
+    // fetch current logged-in patient
+    await PatientService.getProfile();
+
     if (!mounted) return;
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const MainScreen()),
@@ -115,7 +123,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     keyboardType: TextInputType.phone,
                     errorText: _phoneError,
                     onChanged: (_) => setState(() {
-                      _phoneError  = null;
+                      _phoneError = null;
                       _serverError = null;
                     }),
                   ),
@@ -130,7 +138,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     errorText: _passwordError,
                     onChanged: (_) => setState(() {
                       _passwordError = null;
-                      _serverError   = null;
+                      _serverError = null;
                     }),
                     suffixIcon: GestureDetector(
                       onTap: () =>
@@ -151,26 +159,33 @@ class _SignInScreenState extends State<SignInScreen> {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.error.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: AppColors.error.withValues(alpha: 0.25)),
+                          color: AppColors.error.withValues(alpha: 0.25),
+                        ),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.error_outline,
-                              color: AppColors.error, size: 16),
+                          const Icon(
+                            Icons.error_outline,
+                            color: AppColors.error,
+                            size: 16,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _serverError!,
                               style: const TextStyle(
-                                  color: AppColors.error,
-                                  fontSize: 12,
-                                  height: 1.4),
+                                color: AppColors.error,
+                                fontSize: 12,
+                                height: 1.4,
+                              ),
                             ),
                           ),
                         ],
@@ -192,7 +207,8 @@ class _SignInScreenState extends State<SignInScreen> {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => const ForgotPasswordScreen()),
+                        builder: (_) => const ForgotPasswordScreen(),
+                      ),
                     ),
                     child: const Text(
                       'Mot de passe oublié ?',

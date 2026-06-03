@@ -40,6 +40,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.0.9
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +74,8 @@ flutter:
     - assets/images/loginIcon3.svg
     - assets/images/backgroundLogo.svg
     - assets/images/cardDesign.svg
+    - assets/images/healio.svg
+    - assets/images/healio.png
     - assets/images/QrBackground.svg 
     - assets/images/IdBackground.svg  
     - assets/images/upBlur.svg
