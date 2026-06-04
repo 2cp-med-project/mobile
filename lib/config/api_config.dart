@@ -1,7 +1,7 @@
 class ApiConfig {
   // CHANGE THIS TO YOUR BACKEND IP
   static const String baseUrl =
-      'http://10.68.13.26:5000/api';
+      'https://backend.healio.foo/api';
 
   // Endpoints
   static const consultation = '/records/consultation';

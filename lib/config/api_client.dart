@@ -11,7 +11,7 @@ class ApiClient {
   static const Duration _timeout =
       Duration(seconds: 20);
 
-static const baseUrl = 'http://10.68.13.26:5000/api'; // Android emulator localhost
+static const baseUrl = 'https://backend.healio.foo/api'; // Android emulator localhost
  
 
   static Future<Map<String, String>> _headers({
