@@ -9,8 +9,9 @@ import '../widgets/healio_logo.dart';
 import '../widgets/signup_bubbles.dart';
 import 'sign_up_step6_screen.dart';
 import '../config/validators.dart';
+import 'formule_screen.dart';
 import '../services/auth_service.dart';
-import 'otp_screen.dart';
+
 
 class SignUpStep5Screen extends StatefulWidget {
   const SignUpStep5Screen({super.key});
@@ -34,48 +35,44 @@ class _SignUpStep5ScreenState extends State<SignUpStep5Screen> {
     super.dispose();
   }
 
-  Future<void> _onSuivant() async {
-  // 1. Validate password fields
+ Future<void> _onSuivant() async {
   setState(() {
     _pwError = Validators.password(_pwCtrl.text);
-    _confirmError = Validators.confirmPassword(_confirmCtrl.text, _pwCtrl.text);
+    _confirmError = Validators.confirmPassword(
+      _confirmCtrl.text,
+      _pwCtrl.text,
+    );
   });
+
   if (_pwError != null || _confirmError != null) return;
 
-  // 2. Save password temporarily
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('_temp_password', _pwCtrl.text);
 
-  // 3. Retrieve stored phone number (should exist from step 3)
-  final phone = prefs.getString('phone');
-  if (phone == null || phone.isEmpty) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Numéro de téléphone introuvable. Veuillez recommencer.')),
-      );
-    }
-    return;
-  }
+  await prefs.setString(
+    '_temp_password',
+    _pwCtrl.text,
+  );
 
-  // 4. Request OTP before navigating
-  setState(() => _isLoading = true);   // you need to add a bool _isLoading field
-  final error = await AuthService.requestOtp(phone, false);
+  setState(() => _isLoading = true);
+
+  final registerError = await AuthService.register();
+
   if (!mounted) return;
+
   setState(() => _isLoading = false);
 
-  if (error != null) {
-    // Show error and stay on current screen
+  if (registerError != null) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error)),
+      SnackBar(content: Text(registerError)),
     );
     return;
   }
 
-  // 5. Success: navigate to OTP screen
-  if (!mounted) return;
-  Navigator.push(
+  Navigator.pushReplacement(
     context,
-    MaterialPageRoute(builder: (_) => const OtpScreen()),
+    MaterialPageRoute(
+      builder: (_) => const FormuleScreen(),
+    ),
   );
 }
 

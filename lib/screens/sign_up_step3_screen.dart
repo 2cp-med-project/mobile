@@ -58,17 +58,20 @@ class _SignUpStep3ScreenState extends State<SignUpStep3Screen> {
     final prefs = await SharedPreferences.getInstance();
     final nom = prefs.getString('nom') ?? '';
     final prenom = prefs.getString('prenom') ?? '';
-    await StorageHelper.saveUser(
-      nom: nom,
-      prenom: prenom,
-      phone: _phoneController.text.trim(),
-      email: _emailController.text.trim(),
-      userId: 'signup_temp',
-    );
-    await prefs.setString(
-      'signup_temp_adresse',
-      _adresseController.text.trim(),
-    ); 
+   await prefs.setString(
+  'phone',
+  _phoneController.text.trim(),
+);
+
+await prefs.setString(
+  'email',
+  _emailController.text.trim(),
+);
+
+await prefs.setString(
+  'adresse',
+  _adresseController.text.trim(),
+);
 
     if (!mounted) return;
     Navigator.push(

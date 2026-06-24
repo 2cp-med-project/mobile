@@ -4,7 +4,7 @@
 
 class Endpoints {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  static const signin         = '/auth/signin';           // POST — register
+  static const signin         = '/auth/signup';           // POST — register
   static const login          = '/auth/login';            // POST — login
   static const logout         = '/auth/logout';           // POST — logout (Bearer)
   static const refreshToken   = '/auth/refresh-token';    // POST

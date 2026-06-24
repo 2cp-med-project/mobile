@@ -43,7 +43,7 @@ class _SignUpStep4ScreenState extends State<SignUpStep4Screen> {
     // Persist as a single-item list (keeps API shape consistent)
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'signup_temp_emergency_contacts',
+      'emergency_contacts',
       jsonEncode([
         {'name': _nameCtrl.text.trim(), 'phone': _phoneCtrl.text.trim()},
       ]),

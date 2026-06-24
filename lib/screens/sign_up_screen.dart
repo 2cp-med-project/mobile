@@ -1,6 +1,7 @@
 // Logic required in the fields (case of mdp<8, phone/email invalid, empty fields...)
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/app_button.dart';
 import '../widgets/healio_logo.dart';
@@ -40,15 +41,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _nomError = Validators.name(_nomController.text));
     setState(() => _prenomError = Validators.name(_prenomController.text));
     if (_nomError != null || _prenomError != null) return;
+    final prefs = await SharedPreferences.getInstance();
 
-    await StorageHelper.saveUser(
-      nom: _nomController.text.trim(),
-      prenom: _prenomController.text.trim(),
-      phone: '',
-      email: '',
-      userId: 'signup_temp',
-    );
+    await prefs.setString('nom', _nomController.text.trim());
 
+    await prefs.setString('prenom', _prenomController.text.trim());
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const SignUpStep2Screen()),

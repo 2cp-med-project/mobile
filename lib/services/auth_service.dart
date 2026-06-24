@@ -19,15 +19,11 @@ class AuthService {
     try {
       print('================ LOGIN START ================');
 
-      final res = await ApiClient.post(
-        Endpoints.login,
-        {
-          'phone': phone,
-          'password': password,
-          'role': role,
-        },
-        auth: false,
-      );
+      final res = await ApiClient.post(Endpoints.login, {
+        'phone': phone,
+        'password': password,
+        'role': role,
+      }, auth: false);
 
       print('LOGIN RESPONSE: ${res.data}');
 
@@ -38,7 +34,8 @@ class AuthService {
       final data = res.data as Map<String, dynamic>;
 
       // Extract token
-      final token = data['token'] ??
+      final token =
+          data['token'] ??
           data['refreshToken'] ??
           data['access_token'] ??
           data['data']?['token'] ??
@@ -51,8 +48,11 @@ class AuthService {
       await StorageHelper.saveToken(token.toString());
 
       // Extract user data (supports both '_id' and 'userId')
-      final user = (data['user'] ?? data['data']?['user'] ?? data) as Map<String, dynamic>;
-      final userId = user['_id']?.toString() ?? user['userId']?.toString() ?? '';
+      final user =
+          (data['user'] ?? data['data']?['user'] ?? data)
+              as Map<String, dynamic>;
+      final userId =
+          user['_id']?.toString() ?? user['userId']?.toString() ?? '';
 
       print('USER ID FOUND: $userId');
 
@@ -93,36 +93,55 @@ class AuthService {
 
       final prefs = await SharedPreferences.getInstance();
 
-      final firstName = await StorageHelper.getPrenom();
-      final lastName = await StorageHelper.getNom();
-      final email = await StorageHelper.getEmail();
-      final phone = await StorageHelper.getPhone();
-      final password = prefs.getString('_temp_password');
+      // READ DIRECTLY FROM SIGNUP FORM DATA
+      final firstName =
+          prefs.getString('prenom') ?? prefs.getString('firstName') ?? '';
+
+      final lastName =
+          prefs.getString('nom') ?? prefs.getString('lastName') ?? '';
+
+      final email = prefs.getString('email') ?? '';
+
+      final phone = prefs.getString('phone') ?? '';
+
+      final password = prefs.getString('_temp_password') ?? '';
 
       final contacts = prefs.getString('emergency_contacts');
-      final List<dynamic> contactsList =
-          contacts != null ? jsonDecode(contacts) : [];
+
+      final List<dynamic> contactsList = contacts != null
+          ? jsonDecode(contacts)
+          : [];
 
       print('REGISTER FIRSTNAME: $firstName');
       print('REGISTER LASTNAME: $lastName');
       print('REGISTER EMAIL: $email');
       print('REGISTER PHONE: $phone');
+      print('nom = ${prefs.getString('nom')}');
+      print('prenom = ${prefs.getString('prenom')}');
+      print('phone = ${prefs.getString('phone')}');
+      print('email = ${prefs.getString('email')}');
+      print('date_naissance = ${prefs.getString('date_naissance')}');
+      print('lieu_naissance = ${prefs.getString('lieu_naissance')}');
+      print('genre = ${prefs.getString('genre')}');
+      print('adresse = ${prefs.getString('adresse')}');
+      print('emergency_contacts = ${prefs.getString('emergency_contacts')}');
 
       final requestBody = {
-        'firstName': firstName ?? '',
-        'lastName': lastName ?? '',
+        'firstName': firstName,
+        'lastName': lastName,
         'dateOfBirth': _toIsoDate(prefs.getString('date_naissance') ?? ''),
         'placeOfBirth': prefs.getString('lieu_naissance') ?? '',
         'gender': _toBackendGender(prefs.getString('genre') ?? ''),
         'address': prefs.getString('adresse') ?? '',
-        'phone': phone ?? '',
-        'email': email ?? '',
-        'password': password ?? '',
+        'phone': phone,
+        'email': email,
+        'password': password,
         'role': 'patient',
         'emergencyContacts': contactsList,
       };
 
       print('REGISTER REQUEST BODY: $requestBody');
+      print('REGISTER ENDPOINT: ${Endpoints.signin}');
 
       final res = await ApiClient.post(
         Endpoints.signin,
@@ -132,28 +151,12 @@ class AuthService {
 
       print('REGISTER RESPONSE: ${res.data}');
       print('REGISTER SUCCESS: ${res.success}');
+      print('REGISTER ERROR: ${res.error}');
 
       if (!res.success) {
         return res.error ?? 'Échec de création du compte';
       }
 
-      final data = res.data as Map<String, dynamic>;
-
-      final token = data['token'] ??
-          data['refreshToken'] ??
-          data['access_token'] ??
-          data['data']?['token'];
-
-      if (token != null) {
-        await StorageHelper.saveToken(token.toString());
-      }
-
-      final fcmToken = await NotificationService.getToken();
-      if (fcmToken != null && fcmToken.isNotEmpty) {
-        await registerFCMTokenToBackend(fcmToken);
-      }
-
-      print('================ REGISTER END ================');
       return null;
     } catch (e, stack) {
       print('REGISTER EXCEPTION: $e');
@@ -173,11 +176,9 @@ class AuthService {
       if (fcmToken.isNotEmpty) {
         print('🔵 [DEBUG] Sending to: ${Endpoints.registerFcmToken}');
 
-        final response = await ApiClient.post(
-          Endpoints.registerFcmToken,
-          {'fcmToken': fcmToken},
-          auth: true,
-        );
+        final response = await ApiClient.post(Endpoints.registerFcmToken, {
+          'fcmToken': fcmToken,
+        }, auth: true);
 
         print('🔵 [DEBUG] Response success: ${response.success}');
 
@@ -211,11 +212,12 @@ class AuthService {
   // OTP (Request & Verify)
   // ─────────────────────────────────────────────
   static Future<String?> requestOtp(String contact, bool isEmail) async {
-    final body = {
-      'phone': contact,
-      'role': 'patient',
-    };
-    final response = await ApiClient.post(Endpoints.requestOtp, body, auth: false);
+    final body = {'phone': contact, 'role': 'patient'};
+    final response = await ApiClient.post(
+      Endpoints.requestOtp,
+      body,
+      auth: false,
+    );
     if (response.success) {
       return null;
     }
@@ -223,12 +225,12 @@ class AuthService {
   }
 
   static Future<String?> verifyOtp(String code, String phone) async {
-    final body = {
-      'code': code,
-      'role': 'patient',
-      'phone': phone,
-    };
-    final response = await ApiClient.post(Endpoints.verifyOtp, body, auth: false);
+    final body = {'code': code, 'role': 'patient', 'phone': phone};
+    final response = await ApiClient.post(
+      Endpoints.verifyOtp,
+      body,
+      auth: false,
+    );
     if (response.success) {
       final token = response.data['token'] ?? response.data['access_token'];
       if (token != null) {
@@ -242,15 +244,11 @@ class AuthService {
   // Optional: resend OTP (if needed by your backend)
   static Future<String?> resendOtp({bool isEmail = true}) async {
     final prefs = await SharedPreferences.getInstance();
-    final res = await ApiClient.post(
-      Endpoints.requestOtp,
-      {
-        'channel': isEmail ? 'email' : 'phone',
-        'email': prefs.getString('email') ?? '',
-        'phone': prefs.getString('phone') ?? '',
-      },
-      auth: false,
-    );
+    final res = await ApiClient.post(Endpoints.requestOtp, {
+      'channel': isEmail ? 'email' : 'phone',
+      'email': prefs.getString('email') ?? '',
+      'phone': prefs.getString('phone') ?? '',
+    }, auth: false);
     if (!res.success) return res.error ?? 'Échec de renvoi';
     return null;
   }

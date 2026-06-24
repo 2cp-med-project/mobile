@@ -158,18 +158,17 @@ class _SignUpStep2ScreenState extends State<SignUpStep2Screen> {
         _sexeError != null)
       return;
 
-    // ── Persist step 2 data 
+    // ── Persist step 2 data
     final prefs = await SharedPreferences.getInstance();
     final dateFormatted =
         '${_jourController.text.trim().padLeft(2, '0')} / '
         '${_moisController.text.trim().padLeft(2, '0')} / '
         '${_anneeController.text.trim()}';
-    const uid = 'signup_temp';
+    await prefs.setString('date_naissance', dateFormatted);
 
-    await prefs.setString('${uid}_date_naissance', dateFormatted);
-    await prefs.setString('${uid}_lieu_naissance', _lieuController.text.trim());
-    await prefs.setString('${uid}_genre', _sexe!);
+    await prefs.setString('lieu_naissance', _lieuController.text.trim());
 
+    await prefs.setString('genre', _sexe!);
     if (!mounted) return;
     Navigator.push(
       context,
